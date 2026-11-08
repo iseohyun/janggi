@@ -1,0 +1,185 @@
+/* === Scoreboard Styles === */
+/**
+ * @fileoverview 회전형 점수판(#score-panel), 점수 막대, 대국 타이머, 대회 메타데이터 카드 스타일
+ */
+#score-panel {
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+  max-width: 340px;
+  padding: 4px 0;
+  box-sizing: border-box;
+}
+
+.score-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+.score-label {
+  font-size: 1.15em;
+  font-weight: 800;
+  min-width: 80px;
+}
+
+.han-label {
+  color: #b91c1c;
+  text-align: left;
+}
+
+.cho-label {
+  color: #1e3a8a;
+  text-align: right;
+}
+
+.score-diff-val {
+  font-size: 1.6em;
+  font-weight: 900;
+  color: var(--color-bg-dark, #0f172a);
+  text-align: center;
+  font-family: 'Outfit', 'Inter', sans-serif;
+  letter-spacing: -0.5px;
+}
+
+.score-bar-container {
+  width: 100%;
+  height: 10px;
+  background-color: #e2e8f0;
+  border-radius: 5px;
+  overflow: hidden;
+  display: flex;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+
+.score-bar {
+  height: 100%;
+  transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.han-bar {
+  background: linear-gradient(to right, #b91c1c, #ef4444);
+}
+
+.cho-bar {
+  background: linear-gradient(to right, #3b82f6, #1e3a8a);
+}
+
+.score-slides-wrapper {
+  position: relative;
+  width: 100%;
+  height: 52px; /* 고정 높이로 레이아웃 흔들림 방지 */
+}
+
+.score-slide {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.4s ease, visibility 0.4s ease;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+.score-slide.active {
+  opacity: 1;
+  visibility: visible;
+  position: relative; /* layout flow 내에 배치 */
+}
+
+/* Slide 2: Timer */
+.timer-row {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  width: 100%;
+  font-family: 'Outfit', 'Inter', sans-serif;
+  font-weight: 800;
+  font-size: 1.25em;
+}
+
+.timer-vs {
+  font-size: 0.8em;
+  opacity: 0.5;
+  color: var(--color-text-muted, #64748b);
+}
+
+.timer-player {
+  min-width: 90px;
+}
+
+.han-timer {
+  color: var(--color-han-red, #ef4444);
+  text-align: left;
+}
+
+.cho-timer {
+  color: var(--color-cho-blue, #3b82f6);
+  text-align: right;
+}
+
+.timer-active-turn {
+  font-size: 0.8em;
+  color: var(--color-text-muted, #64748b);
+  margin-top: 4px;
+  font-weight: 600;
+}
+
+/* Slide 3: Metadata Card */
+.meta-row {
+  font-size: 1em;
+  font-weight: 800;
+  color: var(--color-text-primary, #f8fafc);
+  text-align: center;
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.meta-row-players {
+  font-size: 0.85em;
+  font-weight: 700;
+  color: var(--color-text-secondary, #94a3b8);
+  margin-top: 4px;
+}
+
+#meta-cho-player-display {
+  color: var(--color-primary-light, #60a5fa);
+}
+
+#meta-han-player-display {
+  color: #f87171;
+}
+
+/* Dots Indicator */
+.score-slide-dots {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 2px;
+  width: 100%;
+}
+
+.score-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: rgba(148, 163, 184, 0.3);
+  transition: all 0.2s;
+}
+
+.score-dot.active {
+  background-color: var(--color-primary, #3b82f6);
+  transform: scale(1.2);
+}

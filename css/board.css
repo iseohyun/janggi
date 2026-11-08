@@ -1,0 +1,94 @@
+/**
+ * @fileoverview 장기판(#janggi-svg), 기물(.piece-svg) 3D 입체 효과 및 회전/반전 애니메이션 스타일.
+ */
+
+#janggi-svg {
+  transform-origin: 50% 50%;
+  transform-box: view-box;
+  transform-style: preserve-3d;
+}
+
+#janggi-svg.rotate-180-anim {
+  transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  transform: rotate(180deg) !important;
+}
+
+#janggi-svg.flip-h-anim {
+  transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  transform: scaleX(-1) !important;
+}
+
+.piece-svg.smooth-move-anim,
+#kb-cursor.smooth-move-anim {
+  transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+#kb-cursor {
+  transform-origin: 50% 50%;
+  transform-box: fill-box;
+}
+
+/* Premium 3D design styles for Web Janggi */
+.piece-svg {
+  cursor: pointer;
+  transition: filter 0.2s;
+  transform-origin: 50% 50%;
+  transform-box: view-box;
+}
+
+/* Disable transitions during resize and initialization */
+.no-transition .piece-svg {
+  transition: none !important;
+}
+
+/* Hover dynamic lift animation */
+.piece-svg:hover {
+  filter: drop-shadow(4px 8px 6px rgba(0, 0, 0, 0.45)) !important;
+}
+
+/* Calligraphic typography styling */
+.piece-text {
+  font-family: 'Zhi Mang Xing', 'Noto Serif KR', 'Batang', serif;
+  font-weight: 900;
+  font-size: 38px;
+  text-anchor: middle;
+  dominant-baseline: central; /* Vertical centering */
+  user-select: none;
+  pointer-events: none; /* Make text transparent to pointer events */
+}
+
+.blue-text {
+  fill: #0c1b40;
+  text-shadow: 0 1px 0 #ffffff;
+}
+
+.red-text {
+  fill: #7f1d1d;
+  text-shadow: 0 1px 0 #ffffff;
+}
+
+/* Size modifications for specific pieces to match authentic board layout */
+.font-king {
+  font-weight: 900;
+  font-size: 46px;
+}
+
+.font-sa {
+  font-weight: 900;
+  font-size: 32px;
+}
+
+.font-zol {
+  font-weight: 900;
+  font-size: 32px;
+}
+
+/* Glow highlight for selected pieces */
+.piece-svg.selected {
+  filter: url(#selected-glow) !important;
+}
+
+/* Hide original red selection frame */
+#select-box {
+  display: none !important;
+}

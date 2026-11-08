@@ -1,0 +1,129 @@
+/**
+ * @fileoverview 상단 컨트롤 바(#control-box), 수순 탐색 버튼(.nav-btn), 턴 표시기(#turn) 스타일.
+ */
+
+#control-box {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  margin-bottom: 8px;
+  margin-left: auto;
+  margin-right: auto;
+  box-sizing: border-box;
+}
+
+.control-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  gap: 20px;
+}
+
+.control-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Turn Display & Navigation (Borderless/Transparent) */
+.turn-nav-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.nav-btn {
+  border: none;
+  background: transparent;
+  padding: 6px;
+  cursor: pointer;
+  color: #475569;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: background-color 0.2s, color 0.2s, transform 0.1s;
+}
+
+.nav-btn:hover {
+  background-color: #e2e8f0;
+  color: #0f172a;
+  transform: scale(1.15);
+}
+
+.nav-btn:active {
+  transform: scale(0.95);
+}
+
+.nav-btn:disabled {
+  color: #cbd5e1;
+  cursor: not-allowed;
+  pointer-events: none;
+  transform: none !important;
+  background-color: transparent !important;
+}
+
+.turn-display {
+  display: inline-flex;
+  align-items: baseline;
+  font-size: 2.1rem; /* Extremely large turn count font size */
+  font-weight: 900;
+  color: #0f172a;
+  line-height: 1;
+  user-select: none;
+  font-family: 'Outfit', 'Inter', sans-serif;
+}
+
+#turn {
+  border: none !important;
+  background: transparent !important;
+  width: 50px;
+  text-align: right;
+  font-size: inherit;
+  font-weight: inherit;
+  color: inherit;
+  outline: none;
+  padding: 0;
+  margin: 0;
+  -moz-appearance: textfield;
+}
+
+#turn::-webkit-outer-spin-button,
+#turn::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.turn-suffix {
+  font-size: 0.65em;
+  font-weight: 800;
+  color: #475569;
+  margin-left: 2px;
+}
+
+/* Icon Buttons (Setting, Download) */
+.icon-btn {
+  width: 3.2em;
+  height: 3.2em;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: none;
+  color: #475569;
+  cursor: pointer;
+  border-radius: 50%;
+  transition: background-color 0.2s, color 0.2s, transform 0.1s;
+}
+
+.icon-btn:hover {
+  background-color: #f1f5f9;
+  color: #1e293b;
+  transform: scale(1.05);
+}
+
+.icon-btn:active {
+  transform: scale(0.95);
+}

@@ -1,0 +1,1170 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+  <meta charset="UTF-8">
+  <!-- 모바일 스케일 고정 -->
+  <meta name="viewport"
+    content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="keywords" content="iseohyun, 장기, janggi">
+  <meta name="author" content="iseohyun">
+
+  <!-- 페이지 타이틀 -->
+  <title>장기 - iseohyun </title>
+  <link rel="icon" type="image/png" href="src/icon.png">
+  <link rel="shortcut icon" type="image/png" href="src/icon.png">
+  <link rel="apple-touch-icon" href="src/icon.png">
+
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-453XSP5W9M"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag() { dataLayer.push(arguments); }
+    gtag('js', new Date());
+    gtag('config', 'G-453XSP5W9M');
+  </script>
+
+  <!-- 공통스킨 -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@900&family=Zhi+Mang+Xing&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/board.css">
+  <link rel="stylesheet" href="css/controls.css">
+  <link rel="stylesheet" href="css/scoreboard.css">
+  <link rel="stylesheet" href="css/settings.css">
+  <link rel="stylesheet" href="css/record.css">
+  <link rel="stylesheet" href="css/modal.css">
+  <link rel="stylesheet" href="css/comment.css">
+
+  <!-- 모듈식 스크립트 순차 로드 -->
+  <script src="module/state.js" defer charset="UTF-8"></script>
+  <script src="module/rules.js" defer charset="UTF-8"></script>
+  <script src="module/board.js" defer charset="UTF-8"></script>
+  <script src="module/ai.js" defer charset="UTF-8"></script>
+  <script src="module/flip.js" defer charset="UTF-8"></script>
+  <script src="module/record.js" defer charset="UTF-8"></script>
+  <script src="module/keyboard.js" defer charset="UTF-8"></script>
+  <script src="module/settings.js" defer charset="UTF-8"></script>
+  <script src="module/ui.js" defer charset="UTF-8"></script>
+  <script src="module/main.js" defer charset="UTF-8"></script>
+  <script src="module/dispatcher.js" defer charset="UTF-8"></script>
+</head>
+
+<body>
+  <article id="janggi-app">
+    <div id="setting-box">
+      <!-- 고정된 헤더 영역 (스크롤되지 않음) -->
+      <div class="settings-header">
+        <button id="close-btn" data-action="hideSettingsPanel">X</button>
+        <span class="settings-title">설정</span>
+        <button id="shortcut-btn-in-settings" class="start-settings-btn" data-action="openShortcutModal" title="단축키 지정하기">단축키</button>
+      </div>
+      
+      <!-- 스크롤 가능한 설정 콘텐츠 영역 -->
+      <div class="settings-scroll-area">
+        <!-- 1. 상차림 -->
+        <div class="setting-category">
+          <div class="category-header">
+            <span class="category-title">상차림</span>
+            <div class="category-header-actions">
+              <button class="reset-category-btn" data-action="resetCategory1" title="상차림 설정 초기화">🔄</button>
+            </div>
+          </div>
+          <div class="charim-container">
+            <div class="charim-table-wrapper">
+              <table>
+                <tr>
+                  <td></td>
+                  <td class="charim-col-header">상차림 배치</td>
+                  <td class="charim-col-header">진영</td>
+                </tr>
+                <tr>
+                  <td>위</td>
+                  <td>
+                    <button class="charim1" data-action="changeCharim" data-group="1" data-piece-type="0">마상마상</button>
+                    <button class="charim1" data-action="changeCharim" data-group="1" data-piece-type="1">마상상마</button>
+                    <button class="charim1" data-action="changeCharim" data-group="1" data-piece-type="2">상마마상</button>
+                    <button class="charim1" data-action="changeCharim" data-group="1" data-piece-type="3">상마상마</button>
+                  </td>
+                  <td>
+                    <button id="nation-top" class="nation-btn" data-action="toggleNation">한</button>
+                  </td>
+                </tr>
+                <tr>
+                  <td>아래</td>
+                  <td>
+                    <button class="charim0" data-action="changeCharim" data-group="0" data-piece-type="0">마상마상</button>
+                    <button class="charim0" data-action="changeCharim" data-group="0" data-piece-type="1">마상상마</button>
+                    <button class="charim0" data-action="changeCharim" data-group="0" data-piece-type="2">상마마상</button>
+                    <button class="charim0" data-action="changeCharim" data-group="0" data-piece-type="3">상마상마</button>
+                  </td>
+                  <td>
+                    <button id="nation-bottom" class="nation-btn" data-action="toggleNation">초</button>
+                  </td>
+                </tr>
+              </table>
+            </div>
+          </div>
+          
+          <!-- 상차림 배치 예시 그림 (미니어처 9칸 back-row 표현) -->
+          <div class="charim-preview-container">
+            <div class="charim-preview-row">
+              <div id="preview-han" class="charim-preview-tokens"></div>
+            </div>
+            <div class="charim-preview-row">
+              <div id="preview-cho" class="charim-preview-tokens"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. 장기판 보기 -->
+        <div class="setting-category collapsible collapsed" id="board-view-category">
+          <div class="category-header accordion-toggle" data-action="toggleSettingCategory" data-category-id="board-view-category">
+            <span class="category-title">장기판 보기</span>
+            <div class="category-header-actions" data-stop-propagation="true">
+              <button class="reset-category-btn" data-action="resetCategory2" title="장기판 보기 설정 초기화">🔄</button>
+              <button id="slot-1-btn" class="slot-btn" data-action="selectSlot" data-num="1" title="슬롯 1 불러오기">1</button>
+              <button id="slot-2-btn" class="slot-btn" data-action="selectSlot" data-num="2" title="슬롯 2 불러오기">2</button>
+              <button class="copy-btn" data-action="copyConfigToClipboard" title="설정 클립보드로 복사">📋</button>
+              <span id="board-view-arrow" class="accordion-arrow">▼</span>
+            </div>
+          </div>
+          <div id="board-view-category-content" class="accordion-content">
+            <table class="settings-table">
+            <tr>
+              <td>좌표 보기</td>
+              <td>
+                <button id="toggle-coords-btn-settings" data-action="toggleCoordinates">좌표 표시 중</button>
+              </td>
+            </tr>
+            <tr>
+              <td>장기알 크기 (왕)</td>
+              <td>
+                <button data-action="adjustPieceSize" data-type="king" data-delta="-0.05">-</button>
+                <span id="val-size-king">1.10</span>
+                <button data-action="adjustPieceSize" data-type="king" data-delta="0.05">+</button>
+              </td>
+            </tr>
+            <tr>
+              <td>장기알 크기 (큰기물)</td>
+              <td>
+                <button data-action="adjustPieceSize" data-type="middle" data-delta="-0.05">-</button>
+                <span id="val-size-middle">0.95</span>
+                <button data-action="adjustPieceSize" data-type="middle" data-delta="0.05">+</button>
+              </td>
+            </tr>
+            <tr>
+              <td>장기알 크기 (작은기물)</td>
+              <td>
+                <button data-action="adjustPieceSize" data-type="small" data-delta="-0.05">-</button>
+                <span id="val-size-small">0.75</span>
+                <button data-action="adjustPieceSize" data-type="small" data-delta="0.05">+</button>
+              </td>
+            </tr>
+            <tr>
+              <td>장기알 글씨 크기 (왕)</td>
+              <td>
+                <button data-action="adjustPieceFontSize" data-type="king" data-delta="-0.05">-</button>
+                <span id="val-font-king">1.00</span>
+                <button data-action="adjustPieceFontSize" data-type="king" data-delta="0.05">+</button>
+              </td>
+            </tr>
+            <tr>
+              <td>장기알 글씨 크기 (큰기물)</td>
+              <td>
+                <button data-action="adjustPieceFontSize" data-type="middle" data-delta="-0.05">-</button>
+                <span id="val-font-middle">1.00</span>
+                <button data-action="adjustPieceFontSize" data-type="middle" data-delta="0.05">+</button>
+              </td>
+            </tr>
+            <tr>
+              <td>장기알 글씨 크기 (작은기물)</td>
+              <td>
+                <button data-action="adjustPieceFontSize" data-type="small" data-delta="-0.05">-</button>
+                <span id="val-font-small">1.00</span>
+                <button data-action="adjustPieceFontSize" data-type="small" data-delta="0.05">+</button>
+              </td>
+            </tr>
+            <tr>
+              <td>좌표 크기</td>
+              <td>
+                <button data-action="adjustCoordsFontSize" data-delta="-0.02">-</button>
+                <span id="val-coords-size">0.22</span>
+                <button data-action="adjustCoordsFontSize" data-delta="0.02">+</button>
+              </td>
+            </tr>
+            <tr>
+              <td>시스템 글자 크기</td>
+              <td>
+                <button data-action="changeFontSize" data-amount="-1">작게</button>
+                <button data-action="changeFontSize" data-amount="1">크게</button>
+              </td>
+            </tr>
+            <tr>
+              <td>장기판 색상</td>
+              <td>
+                <div class="flex-end-row">
+                  <select id="board-color-select" data-action="changeBoardColor">
+                    <option value="wood">전통 나무색</option>
+                    <option value="green">클래식 초록색</option>
+                    <option value="dark">모던 다크 회색</option>
+                    <option value="navy">슬레이트 네이비</option>
+                    <option value="custom">사용자 지정</option>
+                  </select>
+                  <input type="color" id="board-color-picker" class="color-picker-inline" data-action="changeBoardColor" data-value="custom">
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td>장기알 색상 (초나라)</td>
+              <td>
+                <div class="flex-end-row">
+                  <select id="cho-color-select" data-action="changeChoColor">
+                    <option value="blue">기본 청색 (Blue)</option>
+                    <option value="green">비취 녹색 (Green)</option>
+                    <option value="gold">황금 황색 (Gold)</option>
+                    <option value="custom">사용자 지정</option>
+                  </select>
+                  <input type="color" id="cho-color-picker" class="color-picker-inline" data-action="changeChoColor" data-value="custom">
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td>장기알 색상 (한나라)</td>
+              <td>
+                <div class="flex-end-row">
+                  <select id="han-color-select" data-action="changeHanColor">
+                    <option value="red">기본 적색 (Red)</option>
+                    <option value="purple">자옥 자색 (Purple)</option>
+                    <option value="slate">오닉스 회색 (Slate)</option>
+                    <option value="custom">사용자 지정</option>
+                  </select>
+                  <input type="color" id="han-color-picker" class="color-picker-inline" data-action="changeHanColor" data-value="custom">
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td>장기알 모양</td>
+              <td>
+                <select id="piece-shape-select" data-action="changePieceShape">
+                  <option value="octagon">전통 팔각형</option>
+                  <option value="circle">현대 원형</option>
+                </select>
+              </td>
+            </tr>
+            <tr>
+              <td>이동 가능 위치 모양</td>
+              <td>
+                <select id="candi-shape-select" data-action="changeCandiShape">
+                  <option value="empty_circle">빈 원 (경계선)</option>
+                  <option value="filled_circle">꽉찬 원</option>
+                  <option value="empty_square">빈 사각형</option>
+                </select>
+              </td>
+            </tr>
+            <tr>
+              <td>이동 가능 위치 색상</td>
+              <td>
+                <div class="flex-end-row">
+                  <select id="candi-color-select" data-action="changeCandiColor">
+                    <option value="#3b82f6">파란색 (Blue)</option>
+                    <option value="#10b981">초록색 (Green)</option>
+                    <option value="#f97316">주황색 (Orange)</option>
+                    <option value="#a855f7">보라색 (Purple)</option>
+                    <option value="#eab308">노란색 (Yellow)</option>
+                    <option value="custom">사용자 지정</option>
+                  </select>
+                  <input type="color" id="candi-color-picker" class="color-picker-inline" data-action="changeCandiColor" data-value="custom">
+                </div>
+              </td>
+            </tr>
+          </table>
+        </div>
+      </div>
+
+        <!-- 3. 애니메이션 -->
+        <div class="setting-category collapsible collapsed" id="anim-category">
+          <div class="category-header accordion-toggle" data-action="toggleSettingCategory" data-category-id="anim-category">
+            <span class="category-title">애니메이션</span>
+            <div class="category-header-actions" data-stop-propagation="true">
+              <button class="reset-category-btn" data-action="resetCategory3" title="애니메이션 설정 초기화">🔄</button>
+              <span id="anim-arrow" class="accordion-arrow">▼</span>
+            </div>
+          </div>
+          <div id="anim-category-content" class="accordion-content">
+            <table class="settings-table">
+            <tr>
+              <td>애니메이션 시간(초)</td>
+              <td>
+                <div class="flex-end-gap10">
+                  <input type="range" id="anim-duration-slider" class="range-slider" min="0" max="2" step="0.1" value="0.5" data-action="changeAnimDuration">
+                  <span id="anim-duration-val" class="range-value">0.5</span>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td>기물 들기 높이</td>
+              <td>
+                <div class="flex-end-gap10">
+                  <input type="range" id="anim-height-slider" class="range-slider" min="0" max="2" step="0.1" value="0.2" data-action="changeAnimHeight">
+                  <span id="anim-height-val" class="range-value">0.2</span>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td>자동재생 간격 (초)</td>
+              <td>
+                <div class="flex-end-gap10">
+                  <input type="range" id="autoplay-speed-slider" class="range-slider" min="0.5" max="5" step="0.5" value="2" data-action="changeAutoplaySpeed">
+                  <span id="autoplay-speed-val" class="range-value">2.0</span>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td>자동재생 중 애니메이션 사용</td>
+              <td>
+                <div class="flex-end-row">
+                  <input type="checkbox" id="autoplay-use-anim" class="settings-checkbox" checked data-action="changeAutoplayUseAnim">
+                </div>
+              </td>
+            </tr>
+          </table>
+        </div>
+      </div>
+
+        <!-- 4. 설정 -->
+        <div class="setting-category collapsible collapsed" id="settings-category">
+          <div class="category-header accordion-toggle" data-action="toggleSettingCategory" data-category-id="settings-category">
+            <span class="category-title">설정</span>
+            <div class="category-header-actions" data-stop-propagation="true">
+              <button class="reset-category-btn" data-action="resetCategory4" title="설정 초기화">🔄</button>
+              <button class="copy-btn" data-action="copyConfigToClipboard" title="설정 클립보드로 복사">📋</button>
+              <span id="settings-arrow" class="accordion-arrow">▼</span>
+            </div>
+          </div>
+          <div id="settings-category-content" class="accordion-content">
+            <table class="settings-table">
+            <tr>
+              <td>설정 배경 색</td>
+              <td>
+                <div class="flex-end-row">
+                  <select id="settings-bg-select" data-action="changeSettingsBgColor">
+                    <option value="#0f172a">슬레이트 네이비</option>
+                    <option value="#1e293b">다크 그레이</option>
+                    <option value="#1e1b4b">딥 인디고</option>
+                    <option value="#022c22">포레스트 그린</option>
+                    <option value="custom">사용자 지정</option>
+                  </select>
+                  <input type="color" id="settings-bg-picker" class="color-picker-inline" data-action="changeSettingsBgColor" data-value="custom">
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td>설정창 투명도</td>
+              <td>
+                <div class="flex-end-gap10">
+                  <input type="range" id="settings-opacity-slider" class="range-slider" min="0.1" max="1.0" step="0.05" value="0.55" data-action="changeSettingsOpacity">
+                  <span id="settings-opacity-val" class="range-value">0.55</span>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td>각 글자색 옵션</td>
+              <td>
+                <div class="flex-end-row">
+                  <select id="settings-text-color-select" data-action="changeSettingsTextColorType">
+                    <option value="auto">자동</option>
+                    <option value="complementary">보색</option>
+                    <option value="custom">사용자 설정</option>
+                  </select>
+                  <input type="color" id="settings-text-color-picker" class="color-picker-inline" data-action="changeSettingsTextColorCustom">
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td>강조색</td>
+              <td>
+                <div class="flex-end-row">
+                  <select id="settings-accent-color-select" data-action="changeSettingsAccentColor">
+                    <option value="#3b82f6">파란색</option>
+                    <option value="#10b981">초록색</option>
+                    <option value="#f97316">주황색</option>
+                    <option value="#a855f7">보라색</option>
+                    <option value="#eab308">노란색</option>
+                    <option value="custom">사용자 지정</option>
+                  </select>
+                  <input type="color" id="settings-accent-color-picker" class="color-picker-inline" data-action="changeSettingsAccentColor" data-value="custom">
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td>인공지능 대국 (AI Mode)</td>
+              <td>
+                <div class="flex-end-row">
+                  <select id="ai-mode-select" data-action="changeAiMode">
+                    <option value="0">사용 안함 (로컬 2인용)</option>
+                    <option value="1">사용함 (AI가 항상 위쪽에서 플레이)</option>
+                  </select>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td>키보드 커서락 모드</td>
+              <td>
+                <div class="flex-end-row">
+                  <select id="cursor-lock-select" data-action="changeCursorLockMode">
+                    <option value="false">비활성화</option>
+                    <option value="true">활성화 (CapsLock 토글)</option>
+                  </select>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td colspan="2" class="section-divider-cell">점수판 설정</td>
+            </tr>
+            <tr>
+              <td>자동 순환 (Auto Rotation)</td>
+              <td>
+                <div class="flex-end-row">
+                  <select id="score-auto-rotate" data-action="updateScoreboardSettings">
+                    <option value="true">활성화 (자동)</option>
+                    <option value="false">비활성화 (수동 클릭)</option>
+                  </select>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td>순환 간격</td>
+              <td>
+                <div class="flex-end-row">
+                  <select id="score-rotate-interval" data-action="updateScoreboardSettings">
+                    <option value="3">3초</option>
+                    <option value="5">5초</option>
+                    <option value="10">10초</option>
+                    <option value="15">15초</option>
+                  </select>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td>표출 슬라이드 항목</td>
+              <td>
+                <div class="slide-checkboxes-row">
+                  <label class="slide-checkbox-label">
+                    <input type="checkbox" id="score-show-slide1" checked data-action="updateScoreboardSettings"> 점수차
+                  </label>
+                  <label class="slide-checkbox-label">
+                    <input type="checkbox" id="score-show-slide2" checked data-action="updateScoreboardSettings"> 타이머
+                  </label>
+                  <label class="slide-checkbox-label">
+                    <input type="checkbox" id="score-show-slide3" checked data-action="updateScoreboardSettings"> 대회정보
+                  </label>
+                </div>
+              </td>
+          </table>
+        </div>
+      </div>
+      </div>
+    </div>
+
+    <!-- 기보 관리 및 저장창 (기보창) -->
+    <div id="record-box">
+      <!-- 고정된 헤더 영역 (스크롤되지 않음) -->
+      <div class="settings-header">
+        <button id="close-record-btn" data-action="closeRecordModal">X</button>
+        <span class="settings-title">기보</span>
+        <div class="record-header-actions">
+          <button id="img-download-btn" class="record-header-btn" data-action="download" title="장기판 이미지 다운로드">그림 저장</button>
+        </div>
+      </div>
+      
+      <!-- 스크롤 가능한 기보 콘텐츠 영역 -->
+      <div class="settings-scroll-area">
+        <!-- 대국 상세 정보 (접이식 아코디언) -->
+        <div class="setting-category collapsible collapsed" id="metadata-category">
+          <div class="category-header accordion-toggle" data-action="toggleMetadataCategory">
+            <span class="category-title">대국 상세 정보</span>
+            <div class="category-header-actions" data-stop-propagation="true">
+              <button id="save-record-square-btn" class="record-header-action-icon-btn" data-action="saveRecordToLibrary" title="현재 기보 저장 (클립보드 및 보관함)">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                  <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                  <polyline points="7 3 7 8 15 8"></polyline>
+                </svg>
+              </button>
+              <button id="load-record-square-btn" class="record-header-action-icon-btn" data-action="loadRecordFromClipboard" title="클립보드 기보 불러오기">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+                  <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+                </svg>
+              </button>
+              <span id="accordion-arrow" class="accordion-arrow">▼</span>
+            </div>
+          </div>
+          
+          <div id="metadata-category-content" class="accordion-content">
+            <table class="settings-table">
+              <tr>
+                <td>초나라 대국자</td>
+                <td><input type="text" id="meta-cho-player" class="settings-input" placeholder="초나라 플레이어명" data-action="updateMetadataFromForm"></td>
+              </tr>
+              <tr>
+                <td>한나라 대국자</td>
+                <td><input type="text" id="meta-han-player" class="settings-input" placeholder="한나라 플레이어명" data-action="updateMetadataFromForm"></td>
+              </tr>
+              <tr>
+                <td>대회명</td>
+                <td><input type="text" id="meta-tournament" class="settings-input" placeholder="대회 이름" data-action="updateMetadataFromForm"></td>
+              </tr>
+              <tr>
+                <td>대국정보</td>
+                <td><input type="text" id="meta-round" class="settings-input" placeholder="예: 1국 (2026-07-19)" data-action="updateMetadataFromForm"></td>
+              </tr>
+              <tr>
+                <td>기보별명</td>
+                <td><input type="text" id="meta-nickname" class="settings-input" placeholder="예: 귀마 대 귀마 정석" data-action="updateMetadataFromForm"></td>
+              </tr>
+              <tr>
+                <td>총평</td>
+                <td><textarea id="meta-summary" class="meta-summary-textarea" placeholder="대국에 대한 전반적인 해설이나 총평을 남겨주세요." data-action="updateMetadataFromForm"></textarea></td>
+              </tr>
+            </table>
+            
+            <div class="step-comment-section">
+              <span class="category-title step-comment-title" id="current-step-comment-title">현재 수순 (0수) 코멘트</span>
+              <input type="text" id="current-step-comment" class="settings-input step-comment-input" placeholder="이 수순에 대한 해설 코멘트 입력" data-action="updateCurrentStepComment">
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. 저장된 기보 목록 -->
+        <div class="setting-category">
+          <div class="category-header">
+            <span class="category-title">저장된 기보 목록</span>
+          </div>
+          <div id="saved-records-list" class="saved-records-list-container">
+            <!-- JavaScript dynamically inserts saved record rows here -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 해설 말풍선 (Neon Glassmorphic Speech Bubble) -->
+    <div id="comment-bubble" class="comment-bubble-container" style="display: none; cursor: pointer;" data-action="hideCommentBubble">
+      <div class="comment-bubble-content">
+        <div class="comment-bubble-title">💡 한수 해설</div>
+        <div id="comment-bubble-text">이곳에 수순별 코멘트가 표출됩니다.</div>
+      </div>
+      <div class="comment-bubble-arrow"></div>
+    </div>
+
+    <div id="control-box">
+      <div class="control-row">
+        <!-- Turn & Navigation Group (Left) -->
+        <div class="control-group turn-nav-group">
+          <button id="nav-start" class="nav-btn" data-action="goToStart" title="맨 앞으로 이동 (Ctrl + LeftArrow)">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="5" y1="5" x2="5" y2="19"></line>
+              <polyline points="19 18 12 12 19 6"></polyline>
+            </svg>
+          </button>
+          <button id="prev" class="nav-btn" data-action="prev" title="이전 수 (Alt + LeftArrow)">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="15 18 9 12 15 6"></polyline>
+            </svg>
+          </button>
+          <div class="turn-display">
+            <input id="turn" type="number" value="0" min="0"></input>
+            <span class="turn-suffix">수</span>
+          </div>
+          <button id="nav-play-btn" class="nav-btn" data-action="toggleAutoplay" title="자동 재생 시작 (P)">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+              <polygon points="6,4 20,12 6,20"/>
+            </svg>
+          </button>
+          <button id="next" class="nav-btn" data-action="next" title="다음 수 (Alt + RightArrow)">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="9 18 15 12 9 6"></polyline>
+            </svg>
+          </button>
+          <button id="nav-end" class="nav-btn" data-action="goToEnd" title="맨 뒤로 이동 (Ctrl + RightArrow)">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="5 6 12 12 5 18"></polyline>
+              <line x1="19" y1="5" x2="19" y2="19"></line>
+            </svg>
+          </button>
+        </div>
+        
+        <!-- Sum/Score Progress Bar Panel (Middle) - Rotating Info Panel -->
+        <div id="score-panel" data-action="rotateScorePanel">
+          <div class="score-slides-wrapper">
+            <!-- Slide 1: 기본 점수판 -->
+            <div class="score-slide active" id="score-slide-1">
+              <div class="score-row">
+                <span id="han-score-val" class="score-label han-label">한: 73.5</span>
+                <span id="diff-score-val" class="score-diff-val">0.0</span>
+                <span id="cho-score-val" class="score-label cho-label">초: 72.0</span>
+              </div>
+              <div class="score-bar-container">
+                <div id="han-score-bar" class="score-bar han-bar"></div>
+                <div id="cho-score-bar" class="score-bar cho-bar"></div>
+              </div>
+            </div>
+            <!-- Slide 2: 대국 시간 타이머 -->
+            <div class="score-slide" id="score-slide-2">
+              <div class="timer-row">
+                <div class="timer-player han-timer">한: <span id="han-timer-val">00:00</span></div>
+                <div class="timer-vs">VS</div>
+                <div class="timer-player cho-timer"><span id="cho-timer-val">00:00</span> :초</div>
+              </div>
+              <div class="timer-active-turn" id="active-turn-timer-desc">초나라 차례</div>
+            </div>
+            <!-- Slide 3: 대국 정보 카드 -->
+            <div class="score-slide" id="score-slide-3">
+              <div class="meta-row">
+                <span id="meta-tournament-display">대회명 미지정</span>
+              </div>
+              <div class="meta-row-players">
+                <span id="meta-cho-player-display">초나라</span> vs <span id="meta-han-player-display">한나라</span>
+              </div>
+            </div>
+          </div>
+          <!-- 슬라이드 제어용 도트 인디케이터 -->
+          <div class="score-slide-dots">
+            <span class="score-dot active" data-action="setScoreSlide" data-index="0" data-stop-propagation="true"></span>
+            <span class="score-dot" data-action="setScoreSlide" data-index="1" data-stop-propagation="true"></span>
+            <span class="score-dot" data-action="setScoreSlide" data-index="2" data-stop-propagation="true"></span>
+          </div>
+        </div>
+        
+        <!-- Icon Actions Group (Setting, Download) (Right) -->
+        <div class="control-group action-icons">
+          <button id="setting-btn" class="icon-btn" data-action="showSettingsPanel" title="설정">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="3"></circle>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+            </svg>
+          </button>
+          <button id="download-btn" class="icon-btn" data-action="openRecordModal" title="기보 저장 및 관리">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+              <polyline points="17 21 17 13 7 13 7 21"></polyline>
+              <polyline points="7 3 7 8 15 8"></polyline>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+    <svg id="janggi-svg" xmlns="http://www.w3.org/2000/svg" xmlns:xml="http://www.w3.org/XML/1998/namespace"
+      xmlns:xlink="http://www.w3.org/1999/xlink">
+
+      <defs>
+        <!-- Board wood base gradient -->
+        <linearGradient id="board-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#ebd2a9" />
+          <stop offset="50%" stop-color="#dfb67c" />
+          <stop offset="100%" stop-color="#cba063" />
+        </linearGradient>
+
+        <!-- Stretched vertical noise for wood grain texture -->
+        <filter id="wood-grain" x="0%" y="0%" width="100%" height="100%">
+          <feTurbulence type="fractalNoise" baseFrequency="0.01 0.08" numOctaves="4" result="noise" />
+          <feColorMatrix type="matrix" values="
+            0.15 0 0 0 0.85
+            0.10 0 0 0 0.65
+            0.05 0 0 0 0.40
+            0 0 0 0.15 0" in="noise" result="grain" />
+          <feComposite operator="over" in="grain" in2="SourceGraphic" />
+        </filter>
+
+        <!-- Drop shadow for the 3D tokens (matched to Cho piece shadow in user's image) -->
+        <filter id="piece-shadow" x="-25%" y="-25%" width="150%" height="150%">
+          <feDropShadow dx="2" dy="5" stdDeviation="3.5" flood-color="#000" flood-opacity="0.4" />
+        </filter>
+
+        <!-- Aura glow for selected piece -->
+        <filter id="selected-glow" x="-40%" y="-40%" width="180%" height="180%">
+          <feGaussianBlur stdDeviation="6" result="blur" />
+          <feComponentTransfer in="blur" result="glow1">
+            <feFuncA type="linear" slope="3" />
+          </feComponentTransfer>
+          <feColorMatrix type="matrix" values="
+            1 0 0 0 0.98
+            0 1 0 0 0.88
+            0 0 1 0 0.40
+            0 0 0 1 0" in="glow1" result="glow" />
+          <feMerge>
+            <feMergeNode in="glow" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
+
+        <!-- Glow for candidate movements -->
+        <filter id="candi-glow" x="-30%" y="-30%" width="160%" height="160%">
+          <feGaussianBlur stdDeviation="3" result="blur" />
+          <feComponentTransfer in="blur" result="glow1">
+            <feFuncA type="linear" slope="2" />
+          </feComponentTransfer>
+          <feColorMatrix type="matrix" values="
+            0 0 0 0 0.23
+            0 0 0 0 0.51
+            0 0 0 0 0.96
+            0 0 0 1 0" in="glow1" result="glow" />
+          <feMerge>
+            <feMergeNode in="glow" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
+
+        <!-- Face gradient for Cho (Blue) pieces: polished stone/white shell -->
+        <linearGradient id="cho-face-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stop-color="#ffffff" />
+          <stop offset="100%" stop-color="#f1f5f9" />
+        </linearGradient>
+
+        <!-- Face gradient for Han (Red) pieces: warm light wood grain -->
+        <radialGradient id="han-face-grad" cx="45%" cy="40%" r="50%">
+          <stop offset="0%" stop-color="#ebd1ad" />
+          <stop offset="70%" stop-color="#d7af77" />
+          <stop offset="100%" stop-color="#c19456" />
+        </radialGradient>
+
+        <!-- Filter to thicken the character PNG overlays -->
+        <filter id="thicken-char" x="-10%" y="-10%" width="120%" height="120%">
+          <feMorphology operator="dilate" radius="0.4" in="SourceGraphic" result="dilated" />
+          <feMerge>
+            <feMergeNode in="dilated" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
+      </defs>
+
+      <!-- Board representation -->
+      <rect id="board" x="0" y="0" fill="url(#board-grad)" filter="url(#wood-grain)" />
+      <path id="lines" fill="none" stroke="#52391b" stroke-width="1.8" />
+      <g id="coords-labels"></g>
+
+      <!-- Cho (Blue) pieces: 3D Beveled Octagons with Cursive Text Overlays -->
+      <!-- King -->
+      <svg id="cho-king" class="piece-svg cho-piece" viewBox="0 0 100 100" filter="url(#piece-shadow)">
+        <polygon points="30,12 70,12 90,32 90,72 70,92 30,92 10,72 10,32" fill="#1e3a8a" />
+        <polygon points="30,10 70,10 90,30 90,70 70,90 30,90 10,70 10,30" fill="#1e293b" />
+        <polygon points="29,9 65,9 83,27 83,65 65,83 29,83 11,65 11,27" fill="url(#cho-face-grad)" />
+        <circle class="circ" cx="50" cy="52" r="40" fill="#1e3a8a" style="display: none;" />
+        <circle class="circ" cx="50" cy="50" r="40" fill="#1e293b" style="display: none;" />
+        <circle class="circ" cx="47" cy="47" r="37" fill="url(#cho-face-grad)" style="display: none;" />
+        <image href="src/cho_King.png" x="10" y="10" width="74" height="74" filter="url(#thicken-char)" />
+      </svg>
+      <!-- Chariot 1 & 2 -->
+      <svg id="cho-cha1" class="piece-svg cho-piece" viewBox="0 0 100 100" filter="url(#piece-shadow)">
+        <polygon points="30,12 70,12 90,32 90,72 70,92 30,92 10,72 10,32" fill="#1e3a8a" />
+        <polygon points="30,10 70,10 90,30 90,70 70,90 30,90 10,70 10,30" fill="#1e293b" />
+        <polygon points="29,9 65,9 83,27 83,65 65,83 29,83 11,65 11,27" fill="url(#cho-face-grad)" />
+        <circle class="circ" cx="50" cy="52" r="40" fill="#1e3a8a" style="display: none;" />
+        <circle class="circ" cx="50" cy="50" r="40" fill="#1e293b" style="display: none;" />
+        <circle class="circ" cx="47" cy="47" r="37" fill="url(#cho-face-grad)" style="display: none;" />
+        <image href="src/cho_Cha.png" x="10" y="10" width="74" height="74" filter="url(#thicken-char)" />
+      </svg>
+      <svg id="cho-cha2" class="piece-svg cho-piece" viewBox="0 0 100 100" filter="url(#piece-shadow)">
+        <polygon points="30,12 70,12 90,32 90,72 70,92 30,92 10,72 10,32" fill="#1e3a8a" />
+        <polygon points="30,10 70,10 90,30 90,70 70,90 30,90 10,70 10,30" fill="#1e293b" />
+        <polygon points="29,9 65,9 83,27 83,65 65,83 29,83 11,65 11,27" fill="url(#cho-face-grad)" />
+        <circle class="circ" cx="50" cy="52" r="40" fill="#1e3a8a" style="display: none;" />
+        <circle class="circ" cx="50" cy="50" r="40" fill="#1e293b" style="display: none;" />
+        <circle class="circ" cx="47" cy="47" r="37" fill="url(#cho-face-grad)" style="display: none;" />
+        <image href="src/cho_Cha.png" x="10" y="10" width="74" height="74" filter="url(#thicken-char)" />
+      </svg>
+      <!-- Cannon 1 & 2 -->
+      <svg id="cho-po1" class="piece-svg cho-piece" viewBox="0 0 100 100" filter="url(#piece-shadow)">
+        <polygon points="30,12 70,12 90,32 90,72 70,92 30,92 10,72 10,32" fill="#1e3a8a" />
+        <polygon points="30,10 70,10 90,30 90,70 70,90 30,90 10,70 10,30" fill="#1e293b" />
+        <polygon points="29,9 65,9 83,27 83,65 65,83 29,83 11,65 11,27" fill="url(#cho-face-grad)" />
+        <circle class="circ" cx="50" cy="52" r="40" fill="#1e3a8a" style="display: none;" />
+        <circle class="circ" cx="50" cy="50" r="40" fill="#1e293b" style="display: none;" />
+        <circle class="circ" cx="47" cy="47" r="37" fill="url(#cho-face-grad)" style="display: none;" />
+        <image href="src/cho_Po.png" x="10" y="10" width="74" height="74" filter="url(#thicken-char)" />
+      </svg>
+      <svg id="cho-po2" class="piece-svg cho-piece" viewBox="0 0 100 100" filter="url(#piece-shadow)">
+        <polygon points="30,12 70,12 90,32 90,72 70,92 30,92 10,72 10,32" fill="#1e3a8a" />
+        <polygon points="30,10 70,10 90,30 90,70 70,90 30,90 10,70 10,30" fill="#1e293b" />
+        <polygon points="29,9 65,9 83,27 83,65 65,83 29,83 11,65 11,27" fill="url(#cho-face-grad)" />
+        <circle class="circ" cx="50" cy="52" r="40" fill="#1e3a8a" style="display: none;" />
+        <circle class="circ" cx="50" cy="50" r="40" fill="#1e293b" style="display: none;" />
+        <circle class="circ" cx="47" cy="47" r="37" fill="url(#cho-face-grad)" style="display: none;" />
+        <image href="src/cho_Po.png" x="10" y="10" width="74" height="74" filter="url(#thicken-char)" />
+      </svg>
+      <!-- Horse 1 & 2 -->
+      <svg id="cho-ma1" class="piece-svg cho-piece" viewBox="0 0 100 100" filter="url(#piece-shadow)">
+        <polygon points="30,12 70,12 90,32 90,72 70,92 30,92 10,72 10,32" fill="#1e3a8a" />
+        <polygon points="30,10 70,10 90,30 90,70 70,90 30,90 10,70 10,30" fill="#1e293b" />
+        <polygon points="29,9 65,9 83,27 83,65 65,83 29,83 11,65 11,27" fill="url(#cho-face-grad)" />
+        <circle class="circ" cx="50" cy="52" r="40" fill="#1e3a8a" style="display: none;" />
+        <circle class="circ" cx="50" cy="50" r="40" fill="#1e293b" style="display: none;" />
+        <circle class="circ" cx="47" cy="47" r="37" fill="url(#cho-face-grad)" style="display: none;" />
+        <image href="src/cho_Ma.png" x="10" y="10" width="74" height="74" filter="url(#thicken-char)" />
+      </svg>
+      <svg id="cho-ma2" class="piece-svg cho-piece" viewBox="0 0 100 100" filter="url(#piece-shadow)">
+        <polygon points="30,12 70,12 90,32 90,72 70,92 30,92 10,72 10,32" fill="#1e3a8a" />
+        <polygon points="30,10 70,10 90,30 90,70 70,90 30,90 10,70 10,30" fill="#1e293b" />
+        <polygon points="29,9 65,9 83,27 83,65 65,83 29,83 11,65 11,27" fill="url(#cho-face-grad)" />
+        <circle class="circ" cx="50" cy="52" r="40" fill="#1e3a8a" style="display: none;" />
+        <circle class="circ" cx="50" cy="50" r="40" fill="#1e293b" style="display: none;" />
+        <circle class="circ" cx="47" cy="47" r="37" fill="url(#cho-face-grad)" style="display: none;" />
+        <image href="src/cho_Ma.png" x="10" y="10" width="74" height="74" filter="url(#thicken-char)" />
+      </svg>
+      <!-- Elephant 1 & 2 -->
+      <svg id="cho-sang1" class="piece-svg cho-piece" viewBox="0 0 100 100" filter="url(#piece-shadow)">
+        <polygon points="30,12 70,12 90,32 90,72 70,92 30,92 10,72 10,32" fill="#1e3a8a" />
+        <polygon points="30,10 70,10 90,30 90,70 70,90 30,90 10,70 10,30" fill="#1e293b" />
+        <polygon points="29,9 65,9 83,27 83,65 65,83 29,83 11,65 11,27" fill="url(#cho-face-grad)" />
+        <circle class="circ" cx="50" cy="52" r="40" fill="#1e3a8a" style="display: none;" />
+        <circle class="circ" cx="50" cy="50" r="40" fill="#1e293b" style="display: none;" />
+        <circle class="circ" cx="47" cy="47" r="37" fill="url(#cho-face-grad)" style="display: none;" />
+        <image href="src/cho_Sang.png" x="10" y="10" width="74" height="74" filter="url(#thicken-char)" />
+      </svg>
+      <svg id="cho-sang2" class="piece-svg cho-piece" viewBox="0 0 100 100" filter="url(#piece-shadow)">
+        <polygon points="30,12 70,12 90,32 90,72 70,92 30,92 10,72 10,32" fill="#1e3a8a" />
+        <polygon points="30,10 70,10 90,30 90,70 70,90 30,90 10,70 10,30" fill="#1e293b" />
+        <polygon points="29,9 65,9 83,27 83,65 65,83 29,83 11,65 11,27" fill="url(#cho-face-grad)" />
+        <circle class="circ" cx="50" cy="52" r="40" fill="#1e3a8a" style="display: none;" />
+        <circle class="circ" cx="50" cy="50" r="40" fill="#1e293b" style="display: none;" />
+        <circle class="circ" cx="47" cy="47" r="37" fill="url(#cho-face-grad)" style="display: none;" />
+        <image href="src/cho_Sang.png" x="10" y="10" width="74" height="74" filter="url(#thicken-char)" />
+      </svg>
+      <!-- Guard 1 & 2 -->
+      <svg id="cho-sa1" class="piece-svg cho-piece" viewBox="0 0 100 100" filter="url(#piece-shadow)">
+        <polygon points="30,12 70,12 90,32 90,72 70,92 30,92 10,72 10,32" fill="#1e3a8a" />
+        <polygon points="30,10 70,10 90,30 90,70 70,90 30,90 10,70 10,30" fill="#1e293b" />
+        <polygon points="29,9 65,9 83,27 83,65 65,83 29,83 11,65 11,27" fill="url(#cho-face-grad)" />
+        <circle class="circ" cx="50" cy="52" r="40" fill="#1e3a8a" style="display: none;" />
+        <circle class="circ" cx="50" cy="50" r="40" fill="#1e293b" style="display: none;" />
+        <circle class="circ" cx="47" cy="47" r="37" fill="url(#cho-face-grad)" style="display: none;" />
+        <image href="src/cho_Sa.png" x="6" y="6" width="82" height="82" filter="url(#thicken-char)" />
+      </svg>
+      <svg id="cho-sa2" class="piece-svg cho-piece" viewBox="0 0 100 100" filter="url(#piece-shadow)">
+        <polygon points="30,12 70,12 90,32 90,72 70,92 30,92 10,72 10,32" fill="#1e3a8a" />
+        <polygon points="30,10 70,10 90,30 90,70 70,90 30,90 10,70 10,30" fill="#1e293b" />
+        <polygon points="29,9 65,9 83,27 83,65 65,83 29,83 11,65 11,27" fill="url(#cho-face-grad)" />
+        <circle class="circ" cx="50" cy="52" r="40" fill="#1e3a8a" style="display: none;" />
+        <circle class="circ" cx="50" cy="50" r="40" fill="#1e293b" style="display: none;" />
+        <circle class="circ" cx="47" cy="47" r="37" fill="url(#cho-face-grad)" style="display: none;" />
+        <image href="src/cho_Sa.png" x="6" y="6" width="82" height="82" filter="url(#thicken-char)" />
+      </svg>
+      <!-- Soldier 1 to 5 -->
+      <svg id="cho-zol1" class="piece-svg cho-piece" viewBox="0 0 100 100" filter="url(#piece-shadow)">
+        <polygon points="30,12 70,12 90,32 90,72 70,92 30,92 10,72 10,32" fill="#1e3a8a" />
+        <polygon points="30,10 70,10 90,30 90,70 70,90 30,90 10,70 10,30" fill="#1e293b" />
+        <polygon points="29,9 65,9 83,27 83,65 65,83 29,83 11,65 11,27" fill="url(#cho-face-grad)" />
+        <circle class="circ" cx="50" cy="52" r="40" fill="#1e3a8a" style="display: none;" />
+        <circle class="circ" cx="50" cy="50" r="40" fill="#1e293b" style="display: none;" />
+        <circle class="circ" cx="47" cy="47" r="37" fill="url(#cho-face-grad)" style="display: none;" />
+        <image href="src/cho_Zol.png" x="6" y="6" width="82" height="82" filter="url(#thicken-char)" />
+      </svg>
+      <svg id="cho-zol2" class="piece-svg cho-piece" viewBox="0 0 100 100" filter="url(#piece-shadow)">
+        <polygon points="30,12 70,12 90,32 90,72 70,92 30,92 10,72 10,32" fill="#1e3a8a" />
+        <polygon points="30,10 70,10 90,30 90,70 70,90 30,90 10,70 10,30" fill="#1e293b" />
+        <polygon points="29,9 65,9 83,27 83,65 65,83 29,83 11,65 11,27" fill="url(#cho-face-grad)" />
+        <circle class="circ" cx="50" cy="52" r="40" fill="#1e3a8a" style="display: none;" />
+        <circle class="circ" cx="50" cy="50" r="40" fill="#1e293b" style="display: none;" />
+        <circle class="circ" cx="47" cy="47" r="37" fill="url(#cho-face-grad)" style="display: none;" />
+        <image href="src/cho_Zol.png" x="6" y="6" width="82" height="82" filter="url(#thicken-char)" />
+      </svg>
+      <svg id="cho-zol3" class="piece-svg cho-piece" viewBox="0 0 100 100" filter="url(#piece-shadow)">
+        <polygon points="30,12 70,12 90,32 90,72 70,92 30,92 10,72 10,32" fill="#1e3a8a" />
+        <polygon points="30,10 70,10 90,30 90,70 70,90 30,90 10,70 10,30" fill="#1e293b" />
+        <polygon points="29,9 65,9 83,27 83,65 65,83 29,83 11,65 11,27" fill="url(#cho-face-grad)" />
+        <circle class="circ" cx="50" cy="52" r="40" fill="#1e3a8a" style="display: none;" />
+        <circle class="circ" cx="50" cy="50" r="40" fill="#1e293b" style="display: none;" />
+        <circle class="circ" cx="47" cy="47" r="37" fill="url(#cho-face-grad)" style="display: none;" />
+        <image href="src/cho_Zol.png" x="6" y="6" width="82" height="82" filter="url(#thicken-char)" />
+      </svg>
+      <svg id="cho-zol4" class="piece-svg cho-piece" viewBox="0 0 100 100" filter="url(#piece-shadow)">
+        <polygon points="30,12 70,12 90,32 90,72 70,92 30,92 10,72 10,32" fill="#1e3a8a" />
+        <polygon points="30,10 70,10 90,30 90,70 70,90 30,90 10,70 10,30" fill="#1e293b" />
+        <polygon points="29,9 65,9 83,27 83,65 65,83 29,83 11,65 11,27" fill="url(#cho-face-grad)" />
+        <circle class="circ" cx="50" cy="52" r="40" fill="#1e3a8a" style="display: none;" />
+        <circle class="circ" cx="50" cy="50" r="40" fill="#1e293b" style="display: none;" />
+        <circle class="circ" cx="47" cy="47" r="37" fill="url(#cho-face-grad)" style="display: none;" />
+        <image href="src/cho_Zol.png" x="6" y="6" width="82" height="82" filter="url(#thicken-char)" />
+      </svg>
+      <svg id="cho-zol5" class="piece-svg cho-piece" viewBox="0 0 100 100" filter="url(#piece-shadow)">
+        <polygon points="30,12 70,12 90,32 90,72 70,92 30,92 10,72 10,32" fill="#1e3a8a" />
+        <polygon points="30,10 70,10 90,30 90,70 70,90 30,90 10,70 10,30" fill="#1e293b" />
+        <polygon points="29,9 65,9 83,27 83,65 65,83 29,83 11,65 11,27" fill="url(#cho-face-grad)" />
+        <circle class="circ" cx="50" cy="52" r="40" fill="#1e3a8a" style="display: none;" />
+        <circle class="circ" cx="50" cy="50" r="40" fill="#1e293b" style="display: none;" />
+        <circle class="circ" cx="47" cy="47" r="37" fill="url(#cho-face-grad)" style="display: none;" />
+        <image href="src/cho_Zol.png" x="6" y="6" width="82" height="82" filter="url(#thicken-char)" />
+      </svg>
+
+
+      <!-- Han (Red) pieces: 3D Beveled Octagons with wood face and Regular Text Overlays -->
+      <!-- King -->
+      <svg id="han-king" class="piece-svg han-piece" viewBox="0 0 100 100" filter="url(#piece-shadow)">
+        <polygon points="30,12 70,12 90,32 90,72 70,92 30,92 10,72 10,32" fill="#2d1d10" />
+        <polygon points="30,10 70,10 90,30 90,70 70,90 30,90 10,70 10,30" fill="#3f1c0d" />
+        <polygon points="29,9 65,9 83,27 83,65 65,83 29,83 11,65 11,27" fill="url(#han-face-grad)" />
+        <circle class="circ" cx="50" cy="52" r="40" fill="#2d1d10" style="display: none;" />
+        <circle class="circ" cx="50" cy="50" r="40" fill="#3f1c0d" style="display: none;" />
+        <circle class="circ" cx="47" cy="47" r="37" fill="url(#han-face-grad)" style="display: none;" />
+        <polygon points="31,12 63,12 78,27 78,62 63,77 31,77 16,62 16,27" fill="none" stroke="#7e5a36" stroke-width="1" stroke-dasharray="10 15" opacity="0.35" />
+        <polygon points="35,17 59,17 71,29 71,57 59,69 35,69 23,57 23,29" fill="none" stroke="#7e5a36" stroke-width="1" stroke-dasharray="8 12" opacity="0.35" />
+        <image href="src/han_King.png" x="10" y="10" width="74" height="74" filter="url(#thicken-char)" />
+      </svg>
+      <!-- Chariot 1 & 2 -->
+      <svg id="han-cha1" class="piece-svg han-piece" viewBox="0 0 100 100" filter="url(#piece-shadow)">
+        <polygon points="30,12 70,12 90,32 90,72 70,92 30,92 10,72 10,32" fill="#2d1d10" />
+        <polygon points="30,10 70,10 90,30 90,70 70,90 30,90 10,70 10,30" fill="#3f1c0d" />
+        <polygon points="29,9 65,9 83,27 83,65 65,83 29,83 11,65 11,27" fill="url(#han-face-grad)" />
+        <circle class="circ" cx="50" cy="52" r="40" fill="#2d1d10" style="display: none;" />
+        <circle class="circ" cx="50" cy="50" r="40" fill="#3f1c0d" style="display: none;" />
+        <circle class="circ" cx="47" cy="47" r="37" fill="url(#han-face-grad)" style="display: none;" />
+        <polygon points="31,12 63,12 78,27 78,62 63,77 31,77 16,62 16,27" fill="none" stroke="#7e5a36" stroke-width="1" stroke-dasharray="10 15" opacity="0.35" />
+        <polygon points="35,17 59,17 71,29 71,57 59,69 35,69 23,57 23,29" fill="none" stroke="#7e5a36" stroke-width="1" stroke-dasharray="8 12" opacity="0.35" />
+        <image href="src/han_Cha.png" x="10" y="10" width="74" height="74" filter="url(#thicken-char)" />
+      </svg>
+      <svg id="han-cha2" class="piece-svg han-piece" viewBox="0 0 100 100" filter="url(#piece-shadow)">
+        <polygon points="30,12 70,12 90,32 90,72 70,92 30,92 10,72 10,32" fill="#2d1d10" />
+        <polygon points="30,10 70,10 90,30 90,70 70,90 30,90 10,70 10,30" fill="#3f1c0d" />
+        <polygon points="29,9 65,9 83,27 83,65 65,83 29,83 11,65 11,27" fill="url(#han-face-grad)" />
+        <circle class="circ" cx="50" cy="52" r="40" fill="#2d1d10" style="display: none;" />
+        <circle class="circ" cx="50" cy="50" r="40" fill="#3f1c0d" style="display: none;" />
+        <circle class="circ" cx="47" cy="47" r="37" fill="url(#han-face-grad)" style="display: none;" />
+        <polygon points="31,12 63,12 78,27 78,62 63,77 31,77 16,62 16,27" fill="none" stroke="#7e5a36" stroke-width="1" stroke-dasharray="10 15" opacity="0.35" />
+        <polygon points="35,17 59,17 71,29 71,57 59,69 35,69 23,57 23,29" fill="none" stroke="#7e5a36" stroke-width="1" stroke-dasharray="8 12" opacity="0.35" />
+        <image href="src/han_Cha.png" x="10" y="10" width="74" height="74" filter="url(#thicken-char)" />
+      </svg>
+      <!-- Cannon 1 & 2 -->
+      <svg id="han-po1" class="piece-svg han-piece" viewBox="0 0 100 100" filter="url(#piece-shadow)">
+        <polygon points="30,12 70,12 90,32 90,72 70,92 30,92 10,72 10,32" fill="#2d1d10" />
+        <polygon points="30,10 70,10 90,30 90,70 70,90 30,90 10,70 10,30" fill="#3f1c0d" />
+        <polygon points="29,9 65,9 83,27 83,65 65,83 29,83 11,65 11,27" fill="url(#han-face-grad)" />
+        <circle class="circ" cx="50" cy="52" r="40" fill="#2d1d10" style="display: none;" />
+        <circle class="circ" cx="50" cy="50" r="40" fill="#3f1c0d" style="display: none;" />
+        <circle class="circ" cx="47" cy="47" r="37" fill="url(#han-face-grad)" style="display: none;" />
+        <polygon points="31,12 63,12 78,27 78,62 63,77 31,77 16,62 16,27" fill="none" stroke="#7e5a36" stroke-width="1" stroke-dasharray="10 15" opacity="0.35" />
+        <polygon points="35,17 59,17 71,29 71,57 59,69 35,69 23,57 23,29" fill="none" stroke="#7e5a36" stroke-width="1" stroke-dasharray="8 12" opacity="0.35" />
+        <image href="src/han_Po.png" x="10" y="10" width="74" height="74" filter="url(#thicken-char)" />
+      </svg>
+      <svg id="han-po2" class="piece-svg han-piece" viewBox="0 0 100 100" filter="url(#piece-shadow)">
+        <polygon points="30,12 70,12 90,32 90,72 70,92 30,92 10,72 10,32" fill="#2d1d10" />
+        <polygon points="30,10 70,10 90,30 90,70 70,90 30,90 10,70 10,30" fill="#3f1c0d" />
+        <polygon points="29,9 65,9 83,27 83,65 65,83 29,83 11,65 11,27" fill="url(#han-face-grad)" />
+        <circle class="circ" cx="50" cy="52" r="40" fill="#2d1d10" style="display: none;" />
+        <circle class="circ" cx="50" cy="50" r="40" fill="#3f1c0d" style="display: none;" />
+        <circle class="circ" cx="47" cy="47" r="37" fill="url(#han-face-grad)" style="display: none;" />
+        <polygon points="31,12 63,12 78,27 78,62 63,77 31,77 16,62 16,27" fill="none" stroke="#7e5a36" stroke-width="1" stroke-dasharray="10 15" opacity="0.35" />
+        <polygon points="35,17 59,17 71,29 71,57 59,69 35,69 23,57 23,29" fill="none" stroke="#7e5a36" stroke-width="1" stroke-dasharray="8 12" opacity="0.35" />
+        <image href="src/han_Po.png" x="10" y="10" width="74" height="74" filter="url(#thicken-char)" />
+      </svg>
+      <!-- Horse 1 & 2 -->
+      <svg id="han-ma1" class="piece-svg han-piece" viewBox="0 0 100 100" filter="url(#piece-shadow)">
+        <polygon points="30,12 70,12 90,32 90,72 70,92 30,92 10,72 10,32" fill="#2d1d10" />
+        <polygon points="30,10 70,10 90,30 90,70 70,90 30,90 10,70 10,30" fill="#3f1c0d" />
+        <polygon points="29,9 65,9 83,27 83,65 65,83 29,83 11,65 11,27" fill="url(#han-face-grad)" />
+        <circle class="circ" cx="50" cy="52" r="40" fill="#2d1d10" style="display: none;" />
+        <circle class="circ" cx="50" cy="50" r="40" fill="#3f1c0d" style="display: none;" />
+        <circle class="circ" cx="47" cy="47" r="37" fill="url(#han-face-grad)" style="display: none;" />
+        <polygon points="31,12 63,12 78,27 78,62 63,77 31,77 16,62 16,27" fill="none" stroke="#7e5a36" stroke-width="1" stroke-dasharray="10 15" opacity="0.35" />
+        <polygon points="35,17 59,17 71,29 71,57 59,69 35,69 23,57 23,29" fill="none" stroke="#7e5a36" stroke-width="1" stroke-dasharray="8 12" opacity="0.35" />
+        <image href="src/han_Ma.png" x="10" y="10" width="74" height="74" filter="url(#thicken-char)" />
+      </svg>
+      <svg id="han-ma2" class="piece-svg han-piece" viewBox="0 0 100 100" filter="url(#piece-shadow)">
+        <polygon points="30,12 70,12 90,32 90,72 70,92 30,92 10,72 10,32" fill="#2d1d10" />
+        <polygon points="30,10 70,10 90,30 90,70 70,90 30,90 10,70 10,30" fill="#3f1c0d" />
+        <polygon points="29,9 65,9 83,27 83,65 65,83 29,83 11,65 11,27" fill="url(#han-face-grad)" />
+        <circle class="circ" cx="50" cy="52" r="40" fill="#2d1d10" style="display: none;" />
+        <circle class="circ" cx="50" cy="50" r="40" fill="#3f1c0d" style="display: none;" />
+        <circle class="circ" cx="47" cy="47" r="37" fill="url(#han-face-grad)" style="display: none;" />
+        <polygon points="31,12 63,12 78,27 78,62 63,77 31,77 16,62 16,27" fill="none" stroke="#7e5a36" stroke-width="1" stroke-dasharray="10 15" opacity="0.35" />
+        <polygon points="35,17 59,17 71,29 71,57 59,69 35,69 23,57 23,29" fill="none" stroke="#7e5a36" stroke-width="1" stroke-dasharray="8 12" opacity="0.35" />
+        <image href="src/han_Ma.png" x="10" y="10" width="74" height="74" filter="url(#thicken-char)" />
+      </svg>
+      <!-- Elephant 1 & 2 -->
+      <svg id="han-sang1" class="piece-svg han-piece" viewBox="0 0 100 100" filter="url(#piece-shadow)">
+        <polygon points="30,12 70,12 90,32 90,72 70,92 30,92 10,72 10,32" fill="#2d1d10" />
+        <polygon points="30,10 70,10 90,30 90,70 70,90 30,90 10,70 10,30" fill="#3f1c0d" />
+        <polygon points="29,9 65,9 83,27 83,65 65,83 29,83 11,65 11,27" fill="url(#han-face-grad)" />
+        <circle class="circ" cx="50" cy="52" r="40" fill="#2d1d10" style="display: none;" />
+        <circle class="circ" cx="50" cy="50" r="40" fill="#3f1c0d" style="display: none;" />
+        <circle class="circ" cx="47" cy="47" r="37" fill="url(#han-face-grad)" style="display: none;" />
+        <polygon points="31,12 63,12 78,27 78,62 63,77 31,77 16,62 16,27" fill="none" stroke="#7e5a36" stroke-width="1" stroke-dasharray="10 15" opacity="0.35" />
+        <polygon points="35,17 59,17 71,29 71,57 59,69 35,69 23,57 23,29" fill="none" stroke="#7e5a36" stroke-width="1" stroke-dasharray="8 12" opacity="0.35" />
+        <image href="src/han_Sang.png" x="10" y="10" width="74" height="74" filter="url(#thicken-char)" />
+      </svg>
+      <svg id="han-sang2" class="piece-svg han-piece" viewBox="0 0 100 100" filter="url(#piece-shadow)">
+        <polygon points="30,12 70,12 90,32 90,72 70,92 30,92 10,72 10,32" fill="#2d1d10" />
+        <polygon points="30,10 70,10 90,30 90,70 70,90 30,90 10,70 10,30" fill="#3f1c0d" />
+        <polygon points="29,9 65,9 83,27 83,65 65,83 29,83 11,65 11,27" fill="url(#han-face-grad)" />
+        <circle class="circ" cx="50" cy="52" r="40" fill="#2d1d10" style="display: none;" />
+        <circle class="circ" cx="50" cy="50" r="40" fill="#3f1c0d" style="display: none;" />
+        <circle class="circ" cx="47" cy="47" r="37" fill="url(#han-face-grad)" style="display: none;" />
+        <polygon points="31,12 63,12 78,27 78,62 63,77 31,77 16,62 16,27" fill="none" stroke="#7e5a36" stroke-width="1" stroke-dasharray="10 15" opacity="0.35" />
+        <polygon points="35,17 59,17 71,29 71,57 59,69 35,69 23,57 23,29" fill="none" stroke="#7e5a36" stroke-width="1" stroke-dasharray="8 12" opacity="0.35" />
+        <image href="src/han_Sang.png" x="10" y="10" width="74" height="74" filter="url(#thicken-char)" />
+      </svg>
+      <!-- Guard 1 & 2 -->
+      <svg id="han-sa1" class="piece-svg han-piece" viewBox="0 0 100 100" filter="url(#piece-shadow)">
+        <polygon points="30,12 70,12 90,32 90,72 70,92 30,92 10,72 10,32" fill="#2d1d10" />
+        <polygon points="30,10 70,10 90,30 90,70 70,90 30,90 10,70 10,30" fill="#3f1c0d" />
+        <polygon points="29,9 65,9 83,27 83,65 65,83 29,83 11,65 11,27" fill="url(#han-face-grad)" />
+        <circle class="circ" cx="50" cy="52" r="40" fill="#2d1d10" style="display: none;" />
+        <circle class="circ" cx="50" cy="50" r="40" fill="#3f1c0d" style="display: none;" />
+        <circle class="circ" cx="47" cy="47" r="37" fill="url(#han-face-grad)" style="display: none;" />
+        <polygon points="31,12 63,12 78,27 78,62 63,77 31,77 16,62 16,27" fill="none" stroke="#7e5a36" stroke-width="1" stroke-dasharray="10 15" opacity="0.35" />
+        <polygon points="35,17 59,17 71,29 71,57 59,69 35,69 23,57 23,29" fill="none" stroke="#7e5a36" stroke-width="1" stroke-dasharray="8 12" opacity="0.35" />
+        <image href="src/han_Sa.png" x="6" y="6" width="82" height="82" filter="url(#thicken-char)" />
+      </svg>
+      <svg id="han-sa2" class="piece-svg han-piece" viewBox="0 0 100 100" filter="url(#piece-shadow)">
+        <polygon points="30,12 70,12 90,32 90,72 70,92 30,92 10,72 10,32" fill="#2d1d10" />
+        <polygon points="30,10 70,10 90,30 90,70 70,90 30,90 10,70 10,30" fill="#3f1c0d" />
+        <polygon points="29,9 65,9 83,27 83,65 65,83 29,83 11,65 11,27" fill="url(#han-face-grad)" />
+        <circle class="circ" cx="50" cy="52" r="40" fill="#2d1d10" style="display: none;" />
+        <circle class="circ" cx="50" cy="50" r="40" fill="#3f1c0d" style="display: none;" />
+        <circle class="circ" cx="47" cy="47" r="37" fill="url(#han-face-grad)" style="display: none;" />
+        <polygon points="31,12 63,12 78,27 78,62 63,77 31,77 16,62 16,27" fill="none" stroke="#7e5a36" stroke-width="1" stroke-dasharray="10 15" opacity="0.35" />
+        <polygon points="35,17 59,17 71,29 71,57 59,69 35,69 23,57 23,29" fill="none" stroke="#7e5a36" stroke-width="1" stroke-dasharray="8 12" opacity="0.35" />
+        <image href="src/han_Sa.png" x="6" y="6" width="82" height="82" filter="url(#thicken-char)" />
+      </svg>
+      <!-- Soldier 1 to 5 -->
+      <svg id="han-zol1" class="piece-svg han-piece" viewBox="0 0 100 100" filter="url(#piece-shadow)">
+        <polygon points="30,12 70,12 90,32 90,72 70,92 30,92 10,72 10,32" fill="#2d1d10" />
+        <polygon points="30,10 70,10 90,30 90,70 70,90 30,90 10,70 10,30" fill="#3f1c0d" />
+        <polygon points="29,9 65,9 83,27 83,65 65,83 29,83 11,65 11,27" fill="url(#han-face-grad)" />
+        <circle class="circ" cx="50" cy="52" r="40" fill="#2d1d10" style="display: none;" />
+        <circle class="circ" cx="50" cy="50" r="40" fill="#3f1c0d" style="display: none;" />
+        <circle class="circ" cx="47" cy="47" r="37" fill="url(#han-face-grad)" style="display: none;" />
+        <polygon points="31,12 63,12 78,27 78,62 63,77 31,77 16,62 16,27" fill="none" stroke="#7e5a36" stroke-width="1" stroke-dasharray="10 15" opacity="0.35" />
+        <polygon points="35,17 59,17 71,29 71,57 59,69 35,69 23,57 23,29" fill="none" stroke="#7e5a36" stroke-width="1" stroke-dasharray="8 12" opacity="0.35" />
+        <image href="src/han_Byung.png" x="6" y="6" width="82" height="82" filter="url(#thicken-char)" />
+      </svg>
+      <svg id="han-zol2" class="piece-svg han-piece" viewBox="0 0 100 100" filter="url(#piece-shadow)">
+        <polygon points="30,12 70,12 90,32 90,72 70,92 30,92 10,72 10,32" fill="#2d1d10" />
+        <polygon points="30,10 70,10 90,30 90,70 70,90 30,90 10,70 10,30" fill="#3f1c0d" />
+        <polygon points="29,9 65,9 83,27 83,65 65,83 29,83 11,65 11,27" fill="url(#han-face-grad)" />
+        <circle class="circ" cx="50" cy="52" r="40" fill="#2d1d10" style="display: none;" />
+        <circle class="circ" cx="50" cy="50" r="40" fill="#3f1c0d" style="display: none;" />
+        <circle class="circ" cx="47" cy="47" r="37" fill="url(#han-face-grad)" style="display: none;" />
+        <polygon points="31,12 63,12 78,27 78,62 63,77 31,77 16,62 16,27" fill="none" stroke="#7e5a36" stroke-width="1" stroke-dasharray="10 15" opacity="0.35" />
+        <polygon points="35,17 59,17 71,29 71,57 59,69 35,69 23,57 23,29" fill="none" stroke="#7e5a36" stroke-width="1" stroke-dasharray="8 12" opacity="0.35" />
+        <image href="src/han_Byung.png" x="6" y="6" width="82" height="82" filter="url(#thicken-char)" />
+      </svg>
+      <svg id="han-zol3" class="piece-svg han-piece" viewBox="0 0 100 100" filter="url(#piece-shadow)">
+        <polygon points="30,12 70,12 90,32 90,72 70,92 30,92 10,72 10,32" fill="#2d1d10" />
+        <polygon points="30,10 70,10 90,30 90,70 70,90 30,90 10,70 10,30" fill="#3f1c0d" />
+        <polygon points="29,9 65,9 83,27 83,65 65,83 29,83 11,65 11,27" fill="url(#han-face-grad)" />
+        <circle class="circ" cx="50" cy="52" r="40" fill="#2d1d10" style="display: none;" />
+        <circle class="circ" cx="50" cy="50" r="40" fill="#3f1c0d" style="display: none;" />
+        <circle class="circ" cx="47" cy="47" r="37" fill="url(#han-face-grad)" style="display: none;" />
+        <polygon points="31,12 63,12 78,27 78,62 63,77 31,77 16,62 16,27" fill="none" stroke="#7e5a36" stroke-width="1" stroke-dasharray="10 15" opacity="0.35" />
+        <polygon points="35,17 59,17 71,29 71,57 59,69 35,69 23,57 23,29" fill="none" stroke="#7e5a36" stroke-width="1" stroke-dasharray="8 12" opacity="0.35" />
+        <image href="src/han_Byung.png" x="6" y="6" width="82" height="82" filter="url(#thicken-char)" />
+      </svg>
+      <svg id="han-zol4" class="piece-svg han-piece" viewBox="0 0 100 100" filter="url(#piece-shadow)">
+        <polygon points="30,12 70,12 90,32 90,72 70,92 30,92 10,72 10,32" fill="#2d1d10" />
+        <polygon points="30,10 70,10 90,30 90,70 70,90 30,90 10,70 10,30" fill="#3f1c0d" />
+        <polygon points="29,9 65,9 83,27 83,65 65,83 29,83 11,65 11,27" fill="url(#han-face-grad)" />
+        <circle class="circ" cx="50" cy="52" r="40" fill="#2d1d10" style="display: none;" />
+        <circle class="circ" cx="50" cy="50" r="40" fill="#3f1c0d" style="display: none;" />
+        <circle class="circ" cx="47" cy="47" r="37" fill="url(#han-face-grad)" style="display: none;" />
+        <polygon points="31,12 63,12 78,27 78,62 63,77 31,77 16,62 16,27" fill="none" stroke="#7e5a36" stroke-width="1" stroke-dasharray="10 15" opacity="0.35" />
+        <polygon points="35,17 59,17 71,29 71,57 59,69 35,69 23,57 23,29" fill="none" stroke="#7e5a36" stroke-width="1" stroke-dasharray="8 12" opacity="0.35" />
+        <image href="src/han_Byung.png" x="6" y="6" width="82" height="82" filter="url(#thicken-char)" />
+      </svg>
+      <svg id="han-zol5" class="piece-svg han-piece" viewBox="0 0 100 100" filter="url(#piece-shadow)">
+        <polygon points="30,12 70,12 90,32 90,72 70,92 30,92 10,72 10,32" fill="#2d1d10" />
+        <polygon points="30,10 70,10 90,30 90,70 70,90 30,90 10,70 10,30" fill="#3f1c0d" />
+        <polygon points="29,9 65,9 83,27 83,65 65,83 29,83 11,65 11,27" fill="url(#han-face-grad)" />
+        <circle class="circ" cx="50" cy="52" r="40" fill="#2d1d10" style="display: none;" />
+        <circle class="circ" cx="50" cy="50" r="40" fill="#3f1c0d" style="display: none;" />
+        <circle class="circ" cx="47" cy="47" r="37" fill="url(#han-face-grad)" style="display: none;" />
+        <polygon points="31,12 63,12 78,27 78,62 63,77 31,77 16,62 16,27" fill="none" stroke="#7e5a36" stroke-width="1" stroke-dasharray="10 15" opacity="0.35" />
+        <polygon points="35,17 59,17 71,29 71,57 59,69 35,69 23,57 23,29" fill="none" stroke="#7e5a36" stroke-width="1" stroke-dasharray="8 12" opacity="0.35" />
+        <image href="src/han_Byung.png" x="6" y="6" width="82" height="82" filter="url(#thicken-char)" />
+      </svg>
+
+      <rect id="select-box" stroke="red" stroke-width="2" fill="none" />
+      <rect id="kb-cursor" stroke="#10b981" stroke-width="3" fill="none" stroke-dasharray="5 3" rx="6" style="display: none; transition: transform 0.1s ease-out; filter: drop-shadow(0 0 6px #10b981);" />
+    </svg>
+
+    <!-- 단축키 지정 모달 -->
+    <div id="shortcut-modal" class="modal-overlay" data-action="handleModalOverlayClick">
+      <div class="modal-content">
+        <div class="modal-header">
+          <span class="modal-title">단축키 지정</span>
+          <button class="modal-close" data-action="closeShortcutModal">X</button>
+        </div>
+        <div class="modal-body">
+          <p class="modal-description">변경할 기능을 선택한 뒤, 새로운 키를 입력해 주세요.</p>
+          
+          <div class="modal-theme-row modal-theme-row-mb">
+            <div class="modal-theme-group">
+              <span class="modal-theme-label">배경 색상:</span>
+              <input type="color" id="modal-bg-picker" class="modal-color-picker" data-action="changeModalBgColor">
+            </div>
+            <div class="modal-theme-group-grow">
+              <span class="modal-theme-label">투명도:</span>
+              <input type="range" id="modal-opacity-slider" class="modal-range-slider" min="0.3" max="1.0" step="0.05" data-action="changeModalOpacity">
+              <span id="modal-opacity-val" class="modal-range-value">0.9</span>
+            </div>
+          </div>
+
+          <table class="shortcut-table">
+            <thead>
+              <tr>
+                <th>기능</th>
+                <th>주 단축키</th>
+                <th>보조 단축키</th>
+              </tr>
+            </thead>
+            <tbody id="shortcut-table-body">
+              <!-- JS에서 동적으로 채워집니다 -->
+            </tbody>
+          </table>
+        </div>
+        <div class="modal-footer">
+          <button class="modal-btn reset" data-action="resetDefaultShortcuts">기본값 복원</button>
+          <button class="modal-btn close" data-action="closeShortcutModal">닫기</button>
+        </div>
+      </div>
+    </div>
+    <!-- 코멘트 입력 모달 -->
+    <div id="comment-modal" class="modal-overlay" data-action="handleCommentModalOverlayClick">
+      <div class="modal-content">
+        <div class="modal-header">
+          <span class="modal-title" id="comment-modal-title">현재 수순 코멘트 편집</span>
+          <button class="modal-close" data-action="closeCommentModal">X</button>
+        </div>
+        <div class="modal-body">
+          <textarea id="comment-modal-textarea" class="comment-modal-textarea" placeholder="이 수순에 대한 해설이나 코멘트를 입력하세요..."></textarea>
+          
+          <div class="modal-theme-row">
+            <div class="modal-theme-group">
+              <span class="modal-theme-label">배경 색상:</span>
+              <input type="color" id="comment-bg-picker" class="modal-color-picker" data-action="changeCommentBgColor">
+            </div>
+            <div class="modal-theme-group-grow">
+              <span class="modal-theme-label">투명도:</span>
+              <input type="range" id="comment-opacity-slider" class="modal-range-slider" min="0.1" max="1.0" step="0.05" data-action="changeCommentOpacity">
+              <span id="comment-opacity-val" class="modal-range-value">0.4</span>
+            </div>
+          </div>
+          
+          <div class="modal-theme-row modal-theme-row-mt">
+            <div class="modal-theme-group">
+              <span class="modal-theme-label">표시 시간 (초, 0=무제한):</span>
+              <input type="number" id="comment-duration-input" class="comment-duration-input" min="0" max="60" step="1" data-action="changeCommentDuration">
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="modal-btn save modal-save-btn" data-action="saveCommentModal">저장</button>
+          <button class="modal-btn close" data-action="closeCommentModal">닫기</button>
+        </div>
+      </div>
+    </div>
+  </article>
+</body>
+
+</html>
