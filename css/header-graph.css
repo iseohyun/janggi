@@ -1,0 +1,204 @@
+/**
+ * @fileoverview 대국 헤더 그래프 3줄 (module/header-graph.js): 위에서부터 시간 / 기물점수 / 형세.
+ * - 시간·기물점수: 가운데에서 초(파랑)는 왼쪽, 한(빨강)은 오른쪽으로 자란다.
+ *   노란 차이 막대는 가운데에서 더 큰 쪽으로 차이만큼 그리고, z-index를 높여 위에 겹친다.
+ * - 형세: 줄다리기. 초는 왼쪽 끝, 한은 오른쪽 끝에서 시작해 줄을 채우고 경계가 움직인다.
+ */
+
+:root {
+  --hg-cho: #3b82f6;
+  --hg-han: #ef4444;
+  --hg-diff: #facc15;
+  --hg-track: #e2e8f0;
+}
+
+.hdr-graph {
+  flex: 1 1 auto;
+  min-width: 110px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.hg-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  cursor: default;
+}
+
+/* 줄 이름 (시간·기물·형세): 그래프 가운데 위에 겹쳐 쓴다 */
+.hg-kind {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 5;
+  padding: 1px 5px;
+  border-radius: 6px;
+  background: #ffffff; /* 막대 위에서도 읽히도록 흰 바탕 */
+  box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.12);
+  font-size: 9px;
+  font-weight: 800;
+  line-height: 1.1;
+  color: #0f172a;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.hg-track {
+  position: relative;
+  flex: 1 1 auto;
+  height: 13px;
+  border-radius: 4px;
+  background: var(--hg-track);
+  overflow: hidden;
+}
+
+/* 가운데 기준선 (시간·기물점수) */
+.hg-time .hg-track::after,
+.hg-mat .hg-track::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 1px;
+  margin-left: -0.5px;
+  background: rgba(15, 23, 42, 0.45);
+  z-index: 3;
+}
+
+.hg-bar {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 0;
+  transition: width 0.35s ease, opacity 0.2s;
+}
+
+.hg-bar.cho {
+  background: var(--hg-cho);
+  z-index: 1;
+}
+
+.hg-bar.han {
+  background: var(--hg-han);
+  z-index: 1;
+}
+
+.hg-time .hg-bar.cho,
+.hg-mat .hg-bar.cho {
+  right: 50%;
+}
+
+.hg-time .hg-bar.han,
+.hg-mat .hg-bar.han {
+  left: 50%;
+}
+
+/* 노란 차이 막대: 초·한 막대 위에 겹친다. 아래 막대가 보이도록 위아래를 조금 줄인다 */
+.hg-bar.diff {
+  top: 3px;
+  bottom: 3px;
+  background: var(--hg-diff);
+  box-shadow: 0 0 0 1px rgba(161, 98, 7, 0.55);
+  z-index: 2;
+}
+
+.hg-bar.diff.to-cho {
+  right: 50%;
+}
+
+.hg-bar.diff.to-han {
+  left: 50%;
+}
+
+.hg-bar.diff:not(.to-cho):not(.to-han) {
+  display: none;
+}
+
+/* 형세 줄다리기 */
+.hg-eval .hg-bar.cho {
+  left: 0;
+}
+
+.hg-eval .hg-bar.han {
+  right: 0;
+  box-shadow: inset 2px 0 0 #ffffff; /* 경계 */
+}
+
+/* 시간 눈금이 1분 늘어날 때: 막대가 새 눈금으로 천천히 줄어든다 */
+.hg-row.rescale .hg-bar {
+  transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.hg-row.pending .hg-bar {
+  opacity: 0.55;
+}
+
+/* 제한 시간을 넘긴 쪽이 있음 */
+.hg-time.over .hg-track {
+  box-shadow: 0 0 0 2px var(--hg-han);
+}
+
+/* 숫자 라벨: 막대 양 끝 위 */
+.hg-num {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 4;
+  font-size: 9.5px;
+  font-weight: 800;
+  line-height: 1;
+  color: #0f172a;
+  text-shadow: 0 0 2px #ffffff, 0 0 2px #ffffff, 0 0 3px #ffffff;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.hg-num.cho {
+  left: 4px;
+}
+
+.hg-num.han {
+  right: 4px;
+}
+
+@media (max-width: 520px) {
+  .hdr-graph {
+    min-width: 96px;
+    gap: 2px;
+  }
+
+  .hg-track {
+    height: 12px;
+  }
+}
+
+/* 줄 가운데 글자: 차이를 보여 줄 때는 앞선 쪽 색 */
+.hg-kind.lead-cho {
+  color: #1d4ed8;
+}
+
+.hg-kind.lead-han {
+  color: #b91c1c;
+}
+
+/* "형세" 글자: 평소엔 숨기고, 5초 동안 3번 부드럽게 깜빡인다 (header-graph.js hgBlinkEvalLabel) */
+#hg-eval-row .hg-kind.faded {
+  opacity: 0;
+}
+
+#hg-eval-row .hg-kind.faded.blink {
+  animation: hg-blink 1.667s ease-in-out 3;
+}
+
+@keyframes hg-blink {
+  0% { opacity: 0; }
+  35% { opacity: 1; }
+  65% { opacity: 1; }
+  100% { opacity: 0; }
+}

@@ -148,9 +148,9 @@ function selected(i) {
     if (isChoPiece) return; // 한의 턴인데 초의 기물을 조작하려고 하는 경우 차단
   }
 
-  // 만약 AI 모드가 켜져 있고, 현재 턴이 AI(위쪽)의 턴이면 사용자 조작 차단
+  // 만약 AI 모드가 켜져 있고, 현재 턴이 AI 진영의 턴이면 사용자 조작 차단 (ai.js isAITeam)
   if (aiMode === 1) {
-    const isUserTurn = (isChoTurn === iAmCho);
+    const isUserTurn = !isAITeam(isChoTurn ? "cho" : "han");
     if (!isUserTurn) return;
   }
 
@@ -167,8 +167,8 @@ function selected(i) {
   // 이전에 이미 선택된 객체로부터 그려진 이동가능 경로를 삭제합니다.
   clearCandiBox();
 
-  // 해당 진영의 장군 회피 가능한 실제 합법적인 수들만 필터링하여 그립니다.
-  const validMoves = getFilteredLegalMoves(currentTeam);
+  // 선택한 기물(i)의 수 중에서 장군 회피가 가능한 실제 합법수만 그립니다.
+  const validMoves = getFilteredLegalMoves(currentTeam).filter(m => m.i === i);
   renderCandidateMarkers(i, validMoves);
 }
 
@@ -315,7 +315,7 @@ function prev() {
     if (turn) {
       const curTurn = parseInt(turn.value, 10);
       const isChoTurn = (curTurn % 2 === 0);
-      const isUserTurnNow = (isChoTurn === iAmCho);
+      const isUserTurnNow = !isAITeam(isChoTurn ? "cho" : "han");
       
       if (isUserTurnNow && log.length >= 2) {
         performSinglePrev();
@@ -450,6 +450,7 @@ function changeNation(amIcho) {
  * 초/한 진영을 맞바꾸고 새 초기 배치 상태로 보드를 재설정합니다.
  */
 function toggleNation() {
+  aiSidePref = null; // 진영을 바꾸면 AI는 다시 위쪽 (ai.js)
   changeNation(!iAmCho);
   
   // 1. 착수 로그 및 상태 초기화
@@ -585,7 +586,7 @@ function startNewGame() {
   };
   updateMetadataFormFromState();
   updateMetadataDisplay();
-  initScoreboardRotation();
+  initGameTimer();
   updateCommentBubble();
   checkAndRunAI();
 }

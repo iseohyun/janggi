@@ -98,8 +98,9 @@
         handler(el.checked);
       } else {
         const eventHandlers = new Set([
-          "handleModalOverlayClick",
           "handleCommentModalOverlayClick",
+          "handleEvalChartBackdrop",
+          "handleEvalShareBackdrop",
           "toggleMetadataCategory"
         ]);
         handler(eventHandlers.has(actionName) ? event : el);
@@ -144,6 +145,19 @@
     if (el && getExpectedEventType(el) === "change") {
       dispatch(el, e);
     }
+  });
+
+  // 우클릭 메뉴: data-context-action이 있는 요소는 브라우저 메뉴 대신 그 핸들러를 (요소, 이벤트)로 부른다
+  document.addEventListener("contextmenu", function (e) {
+    const el = e.target.closest("[data-context-action]");
+    if (!el) return;
+    const handler = getActionHandler(el.dataset.contextAction);
+    if (!handler) {
+      console.warn(`[dispatcher] 등록되지 않은 우클릭 액션: ${el.dataset.contextAction}`);
+      return;
+    }
+    e.preventDefault();
+    handler(el, e);
   });
 
   document.addEventListener("input", function (e) {

@@ -1,0 +1,118 @@
+/**
+ * @fileoverview 기물 위협 알림 콜 (module/threat-call.js): 판 위 말풍선과 오른쪽 서랍 AI 영역의 "위협 알림" 설정.
+ * 말풍선 색 = 몇 수 앞 위협인지 (1수 빨강 · 2수 주황 · 3수 보라). 색 값은 threat-call.js TC_DEPTH_COLORS와 맞춘다.
+ */
+
+/* ===== 판 위 말풍선 ===== */
+.tc-bubble {
+  animation: tc-pop 0.28s ease-out;
+  transform-box: fill-box;
+  transform-origin: center bottom;
+}
+
+.tc-bubble-box {
+  stroke: rgba(15, 23, 42, 0.85);
+  stroke-width: 1.5;
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.45));
+}
+
+.tc-bubble-text {
+  fill: #ffffff;
+  font-weight: 800;
+  text-anchor: middle;
+  dominant-baseline: central;
+  letter-spacing: -0.02em;
+  font-family: "Pretendard", "Noto Sans KR", "Malgun Gothic", sans-serif;
+}
+
+@keyframes tc-pop {
+  from { transform: scale(0.6); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tc-bubble { animation: none; }
+}
+
+/* ===== 설정 (오른쪽 서랍 AI 영역) ===== */
+.tc-settings {
+  margin: 10px 0 4px;
+  border: 1px solid var(--color-border, rgba(255, 255, 255, 0.12));
+  border-radius: 8px;
+  padding: 6px 10px;
+}
+
+.tc-settings > summary {
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-text-primary, #f8fafc);
+}
+
+.tc-settings-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px 0 4px;
+  font-size: 13px;
+  color: var(--color-text-primary, #f8fafc);
+}
+
+.tc-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.tc-group-title {
+  font-size: 12px;
+  opacity: 0.75;
+}
+
+.tc-opt {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  cursor: pointer;
+  line-height: 1.35;
+}
+
+.tc-opt input {
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+.tc-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.tc-row select {
+  max-width: 62%;
+}
+
+.tc-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.tc-chip {
+  padding: 1px 8px;
+  border-radius: 999px;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.tc-chip.tc-side-cho { background: #2563eb; }
+.tc-chip.tc-side-han { background: #dc2626; }
+
+.tc-legend-note {
+  flex-basis: 100%;
+  font-size: 11px;
+  opacity: 0.7;
+}

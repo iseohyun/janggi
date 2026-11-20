@@ -34,6 +34,14 @@ function matchShortcutKey(action, keyEvent) {
  * @param {KeyboardEvent} e - 키보드 이벤트
  */
 function handleKeyDown(e) {
+  // 앱 팝업(app-dialog.js)이 열려 있으면 Esc로 닫기만 하고, Enter·Tab 등은 팝업 버튼이 받는다
+  if (typeof isAppDialogOpen === "function" && isAppDialogOpen()) {
+    if (e.key === "Escape") {
+      e.preventDefault();
+      closeAppDialog();
+    }
+    return;
+  }
   if (boardAnimating) return;
   
   const isEscape = (e.key === "Escape");
@@ -132,11 +140,45 @@ function handleKeyDown(e) {
     return;
   }
 
-  // 8d. AI 훈수 받기 (X)
+  // 8d-0. 놓아보기 켜기/끄기 (I, preview.js)
+  if (matchShortcutKey("toggleExplore", e)) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (typeof toggleExploreMode === "function") toggleExploreMode();
+    return;
+  }
+
+  // 8d-2. 추천수 1~5 고르기 (번호키, recommend.js)
+  for (let n = 1; n <= 5; n++) {
+    if (matchShortcutKey(`recommend${n}`, e)) {
+      e.preventDefault();
+      e.stopPropagation();
+      if (typeof playRecommendationByKey === "function") playRecommendationByKey(n);
+      return;
+    }
+  }
+
+  // 8d-1. AI 훈수(추천수) 보이기/숨기기 (X, recommend.js)
+  if (matchShortcutKey("toggleRecommend", e)) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (typeof toggleRecommendVisible === "function") toggleRecommendVisible();
+    return;
+  }
+
+  // 8d. AI 훈수 한 수 받기 (기본 단축키 없음)
   if (matchShortcutKey("requestAIHint", e)) {
     e.preventDefault();
     e.stopPropagation();
     requestAIHint();
+    return;
+  }
+
+  // 8d-2. LLM 해설 창 열기 (C)
+  if (matchShortcutKey("openAICommentary", e)) {
+    e.preventDefault();
+    e.stopPropagation();
+    openAICommentModal();
     return;
   }
 
@@ -168,14 +210,7 @@ function handleKeyDown(e) {
   if (matchShortcutKey("cursorLockToggle", e)) {
     e.preventDefault();
     e.stopPropagation();
-    cursorLockMode = !cursorLockMode;
-    localStorage.setItem("cursorLockMode", cursorLockMode);
-    
-    // UI 업데이트
-    const cursorLockSelect = document.getElementById("cursor-lock-select");
-    if (cursorLockSelect) cursorLockSelect.value = cursorLockMode ? "true" : "false";
-    
-    showToast(cursorLockMode ? "커서락 모드 활성화" : "커서락 모드 비활성화");
+    toggleCursorLock();
     return;
   }
 
@@ -184,6 +219,31 @@ function handleKeyDown(e) {
     e.preventDefault();
     e.stopPropagation();
     
+    // 0) 형세 분석 목록 팝업이 열려 있으면 닫기 (eval-share.js)
+    if (typeof isEvalSharePickerOpen === "function" && isEvalSharePickerOpen()) {
+      closeEvalSharePicker();
+      return;
+    }
+
+    // 0) 형세 그래프 창이 열려 있으면 닫기 (eval-history.js)
+    if (typeof isEvalChartOpen === "function" && isEvalChartOpen()) {
+      closeEvalChart();
+      return;
+    }
+
+    // 0) 장기판 우클릭 메뉴가 열려 있으면 닫기 (board-menu.js)
+    if (typeof isBoardMenuOpen === "function" && isBoardMenuOpen()) {
+      closeBoardMenu();
+      return;
+    }
+
+    // 0) 진영 이름 우클릭 메뉴가 열려 있으면 닫기 (header-graph.js)
+    const sideMenu = document.getElementById("side-menu");
+    if (sideMenu && !sideMenu.hidden) {
+      closeSideMenu();
+      return;
+    }
+
     // 1) 코멘트 편집창이 열려있다면 저장하지 않고 닫기
     const commentModal = document.getElementById("comment-modal");
     if (commentModal && commentModal.style.display === "flex") {
@@ -191,16 +251,10 @@ function handleKeyDown(e) {
       return;
     }
     
-    // 2) 단축키 설정 모달이 열려있다면 닫기
-    const shortcutModal = document.getElementById("shortcut-modal");
-    if (shortcutModal && shortcutModal.style.display === "flex") {
-      closeShortcutModal();
-      return;
-    }
-
-    // 3) 상차림 설정창이 열려있다면 닫기
+    // 2) 고정하지 않은 대국·설정 서랍이 열려 있으면 닫기 (고정된 서랍은 닫지 않고 아래로 넘어감)
     const settingBox = document.getElementById("setting-box");
-    if (settingBox && settingBox.style.display === "flex") {
+    const drawerPinned = typeof isDrawerPinned === "function" && isDrawerPinned("right");
+    if (!drawerPinned && settingBox && !settingBox.hidden) {
       hideSettingsPanel();
       return;
     }
@@ -380,6 +434,14 @@ const shortcutActionNames = {
   openCommentEdit: "현재 수순 코멘트 편집창 열기",
   toggleOpponentAI: "상대 AI 모드 켜기/끄기",
   requestAIHint: "AI 훈수 한 수 받기",
+  toggleExplore: "놓아보기 켜기/끄기",
+  toggleRecommend: "AI 훈수(추천수) 보이기/숨기기",
+  recommend1: "추천수 1 두기",
+  recommend2: "추천수 2 두기",
+  recommend3: "추천수 3 두기",
+  recommend4: "추천수 4 두기",
+  recommend5: "추천수 5 두기",
+  openAICommentary: "AI 해설 창 열기",
   flipHorizontal: "판 좌우 반전",
   flipVertical: "판 상하 반전",
   toggleCoordinates: "좌표 표시 켜기/끄기",
@@ -397,6 +459,15 @@ const shortcutActionNames = {
   goToStart: "맨 앞으로 이동",
   goToEnd: "맨 뒤로 이동"
 };
+
+/** 커서락 모드 켜기/끄기 (단축키, 판 우클릭 메뉴 board-menu.js) */
+function toggleCursorLock() {
+  cursorLockMode = !cursorLockMode;
+  localStorage.setItem("cursorLockMode", cursorLockMode);
+  const cursorLockSelect = document.getElementById("cursor-lock-select");
+  if (cursorLockSelect) cursorLockSelect.value = cursorLockMode ? "true" : "false";
+  showToast(cursorLockMode ? "커서락 모드 활성화" : "커서락 모드 비활성화");
+}
 
 /**
  * 구버전 단축키 설정 객체를 최신 구조({ primary, secondary })로 마이그레이션합니다.
@@ -470,6 +541,9 @@ function migrateShortcutKeys(parsedKeys) {
   });
   
   // 강제 핫키 정정 마이그레이션 (구버전 스토리지 마이그레이션 보호)
+  // X는 AI 훈수(추천수) 보이기로 옮겼다: 예전에 저장된 "훈수 한 수 받기 = X"는 비운다
+  const isPlainX = c => c && String(c.key).toLowerCase() === "x" && !c.ctrl && !c.alt && !c.shift;
+  if (migrated.requestAIHint && isPlainX(migrated.requestAIHint.primary)) migrated.requestAIHint.primary = null;
   if (migrated.openShortcutSettings && migrated.openShortcutSettings.primary && migrated.openShortcutSettings.primary.key === "?") {
     migrated.openShortcutSettings.primary.shift = true;
   }
@@ -550,48 +624,18 @@ function applyShortcutModalTheme() {
 }
 
 /**
- * 단축키 설정 모달을 엽니다.
+ * 단축키 표를 엽니다: 오른쪽 서랍의 단축키 영역으로 갑니다 (예전 모달 이름 그대로).
  */
 function openShortcutModal() {
-  const modal = document.getElementById("shortcut-modal");
-  if (!modal) return;
-  
-  const picker = document.getElementById("modal-bg-picker");
-  if (picker) picker.value = shortcutModalBgColor;
-  const slider = document.getElementById("modal-opacity-slider");
-  if (slider) slider.value = shortcutModalOpacity;
-  const valEl = document.getElementById("modal-opacity-val");
-  if (valEl) valEl.textContent = shortcutModalOpacity.toFixed(2);
-  
-  applyShortcutModalTheme();
   populateShortcutTable();
-  modal.style.display = "flex";
-  modal.offsetHeight; // Force reflow
-  modal.classList.add("open");
+  if (typeof jumpToDrawerSection === "function") jumpToDrawerSection("rd-sec-shortcut");
 }
 
 /**
- * 단축키 설정 모달을 닫습니다.
+ * 단축키 입력 녹화를 멈춥니다 (단축키 표는 서랍에 늘 있으므로 닫을 창은 없다).
  */
 function closeShortcutModal() {
-  const modal = document.getElementById("shortcut-modal");
-  if (!modal) return;
-  
   isRecordingKey = null;
-  modal.classList.remove("open");
-  setTimeout(() => {
-    modal.style.display = "none";
-  }, 300);
-}
-
-/**
- * 단축키 모달 오버레이 배경 클릭 시 모달을 닫습니다.
- * @param {MouseEvent} e - 클릭 이벤트
- */
-function handleModalOverlayClick(e) {
-  if (e.target.id === "shortcut-modal") {
-    closeShortcutModal();
-  }
 }
 
 /**

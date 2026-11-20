@@ -28,49 +28,146 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@900&family=Zhi+Mang+Xing&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/base.css">
-  <link rel="stylesheet" href="css/board.css">
-  <link rel="stylesheet" href="css/controls.css">
-  <link rel="stylesheet" href="css/scoreboard.css">
-  <link rel="stylesheet" href="css/settings.css">
-  <link rel="stylesheet" href="css/record.css">
-  <link rel="stylesheet" href="css/modal.css">
-  <link rel="stylesheet" href="css/comment.css">
+  <link rel="stylesheet" href="css/base.css?v=20261120v41">
+  <link rel="stylesheet" href="css/board.css?v=20261120v41">
+  <link rel="stylesheet" href="css/controls.css?v=20261120v41">
+  <link rel="stylesheet" href="css/board-menu.css?v=20261120v41">
+  <link rel="stylesheet" href="css/app-dialog.css?v=20261120v41">
+  <link rel="stylesheet" href="css/header-graph.css?v=20261120v41">
+  <link rel="stylesheet" href="css/drawer.css?v=20261120v41">
+  <link rel="stylesheet" href="css/settings.css?v=20261120v41">
+  <link rel="stylesheet" href="css/record.css?v=20261120v41">
+  <link rel="stylesheet" href="css/modal.css?v=20261120v41">
+  <link rel="stylesheet" href="css/comment.css?v=20261120v41">
+  <link rel="stylesheet" href="css/ai-comment.css?v=20261120v41">
+  <link rel="stylesheet" href="css/variation.css?v=20261120v41">
+  <link rel="stylesheet" href="css/recommend.css?v=20261120v41">
+  <link rel="stylesheet" href="css/famous-games.css?v=20261120v41">
+  <link rel="stylesheet" href="css/eval-chart.css?v=20261120v41">
+  <link rel="stylesheet" href="css/eval-share.css?v=20261120v41">
+  <link rel="stylesheet" href="css/record-groups.css?v=20261120v41">
+  <link rel="stylesheet" href="css/threat-call.css?v=20261120v41">
+  <link rel="stylesheet" href="css/online.css?v=20261120v41">
 
   <!-- 모듈식 스크립트 순차 로드 -->
-  <script src="module/state.js" defer charset="UTF-8"></script>
-  <script src="module/rules.js" defer charset="UTF-8"></script>
-  <script src="module/board.js" defer charset="UTF-8"></script>
-  <script src="module/ai.js" defer charset="UTF-8"></script>
-  <script src="module/flip.js" defer charset="UTF-8"></script>
-  <script src="module/record.js" defer charset="UTF-8"></script>
-  <script src="module/keyboard.js" defer charset="UTF-8"></script>
-  <script src="module/settings.js" defer charset="UTF-8"></script>
-  <script src="module/ui.js" defer charset="UTF-8"></script>
-  <script src="module/main.js" defer charset="UTF-8"></script>
-  <script src="module/dispatcher.js" defer charset="UTF-8"></script>
+  <!-- 교차 출처 격리용 서비스워커 등록: 다른 스크립트보다 먼저, defer 없이 (Fairy-Stockfish용) -->
+  <script src="module/coi-register.js?v=20261120v41" charset="UTF-8"></script>
+  <script src="module/version.js?v=20261120v41" defer charset="UTF-8"></script>
+  <script src="module/state.js?v=20261120v41" defer charset="UTF-8"></script>
+  <script src="module/rules.js?v=20261120v41" defer charset="UTF-8"></script>
+  <script src="module/board.js?v=20261120v41" defer charset="UTF-8"></script>
+  <script src="module/ai.js?v=20261120v41" defer charset="UTF-8"></script>
+  <script src="module/commentary-facts.js?v=20261120v41" defer charset="UTF-8"></script>
+  <script src="module/engine-fsf.js?v=20261120v41" defer charset="UTF-8"></script>
+  <script src="module/commentary-facts-fsf.js?v=20261120v41" defer charset="UTF-8"></script>
+  <script src="module/commentary-providers.js?v=20261120v41" defer charset="UTF-8"></script>
+  <script src="module/commentary.js?v=20261120v41" defer charset="UTF-8"></script>
+  <script src="module/flip.js?v=20261120v41" defer charset="UTF-8"></script>
+  <script src="module/record.js?v=20261120v41" defer charset="UTF-8"></script>
+  <script src="module/keyboard.js?v=20261120v41" defer charset="UTF-8"></script>
+  <script src="module/settings.js?v=20261120v41" defer charset="UTF-8"></script>
+  <script src="module/ui.js?v=20261120v41" defer charset="UTF-8"></script>
+  <script src="module/main.js?v=20261120v41" defer charset="UTF-8"></script>
+  <script src="module/variation.js?v=20261120v41" defer charset="UTF-8"></script>
+  <script src="module/variation-tree.js?v=20261120v41" defer charset="UTF-8"></script>
+  <script src="module/preview.js?v=20261120v41" defer charset="UTF-8"></script>
+  <script src="module/recommend.js?v=20261120v41" defer charset="UTF-8"></script>
+  <script src="module/threat-call.js?v=20261120v41" defer charset="UTF-8"></script>
+  <script src="module/board-menu.js?v=20261120v41" defer charset="UTF-8"></script>
+  <script src="module/game-rules.js?v=20261120v41" defer charset="UTF-8"></script>
+  <script src="module/app-dialog.js?v=20261120v41" defer charset="UTF-8"></script>
+  <script src="module/famous-games.js?v=20261120v41" defer charset="UTF-8"></script>
+  <script src="module/eval-history.js?v=20261120v41" defer charset="UTF-8"></script>
+  <script src="module/eval-file.js?v=20261120v41" defer charset="UTF-8"></script>
+  <script src="module/eval-share.js?v=20261120v41" defer charset="UTF-8"></script>
+  <script src="module/header-graph.js?v=20261120v41" defer charset="UTF-8"></script>
+  <script src="module/drawers.js?v=20261120v41" defer charset="UTF-8"></script>
+  <!-- 온라인 대국 (module/online/*, css/online.css). 백엔드는 firebase-config.js 한 줄로 고른다 -->
+  <script src="module/firebase-config.js?v=20261120v41" defer charset="UTF-8"></script>
+  <script src="functions/email-code-core.js?v=20261120v41" defer charset="UTF-8"></script>
+  <script src="module/online/fake-backend.js?v=20261120v41" defer charset="UTF-8"></script>
+  <script src="module/online/online-core.js?v=20261120v41" defer charset="UTF-8"></script>
+  <script src="module/online/online-guard.js?v=20261120v41" defer charset="UTF-8"></script>
+  <script src="module/online/online-ai.js?v=20261120v41" defer charset="UTF-8"></script>
+  <script src="module/online/online-ui.js?v=20261120v41" defer charset="UTF-8"></script>
+  <script src="module/online/online-verify.js?v=20261120v41" defer charset="UTF-8"></script>
+  <script src="module/dispatcher.js?v=20261120v41" defer charset="UTF-8"></script>
 </head>
 
 <body>
+  <!-- 선형 아이콘 묶음 (WebApp Common GUI icons.svg 규칙: 24px 격자, 선 1.75px, 둥근 끝, 면 없음) -->
+  <svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+    <symbol id="i-reset" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></symbol>
+    <symbol id="i-chev" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+    <symbol id="i-chevl" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
+    <symbol id="i-chevr" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+    <symbol id="i-chev-first" viewBox="0 0 24 24"><path d="m17 18-6-6 6-6M7 6v12"/></symbol>
+    <symbol id="i-list" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></symbol>
+    <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.09-3.09a2 2 0 0 0-2.82 0L6 21"/></symbol>
+    <symbol id="i-sparkles" viewBox="0 0 24 24"><path d="M9.94 15.5A2 2 0 0 0 8.5 14.06l-6.14-1.58a.5.5 0 0 1 0-.96L8.5 9.94A2 2 0 0 0 9.94 8.5l1.58-6.14a.5.5 0 0 1 .96 0L14.06 8.5A2 2 0 0 0 15.5 9.94l6.14 1.58a.5.5 0 0 1 0 .96L15.5 14.06a2 2 0 0 0-1.44 1.44l-1.58 6.14a.5.5 0 0 1-.96 0z"/><path d="M20 3v4M22 5h-4M4 17v2M5 18H3"/></symbol>
+    <symbol id="i-gear" viewBox="0 0 24 24"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><path d="M6 3l14 9-14 9V3z"/></symbol>
+    <symbol id="i-stop" viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="2"/></symbol>
+    <symbol id="i-if" viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="5.5"/><text x="11.6" y="17.2" text-anchor="middle" font-size="14.5" font-weight="900" font-style="italic" font-family="Inter, 'Segoe UI', sans-serif" fill="currentColor" stroke="none">if</text></symbol>
+    <!-- AI 훈수 보이기/숨기기 (헤더 오른쪽): 둥근 정사각형 안 AI, 숨김 상태는 빗금 -->
+    <symbol id="i-ai" viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="5.5"/><text x="12" y="16.4" text-anchor="middle" font-size="11.5" font-weight="900" font-family="Inter, 'Segoe UI', sans-serif" fill="currentColor" stroke="none">AI</text></symbol>
+    <symbol id="i-ai-off" viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="5.5"/><text x="12" y="16.4" text-anchor="middle" font-size="11.5" font-weight="900" font-family="Inter, 'Segoe UI', sans-serif" fill="currentColor" stroke="none">AI</text><path d="M4 4l16 16"/></symbol>
+    <symbol id="i-branch" viewBox="0 0 24 24"><path d="M6 3v12"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></symbol>
+    <symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></symbol>
+    <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></symbol>
+    <symbol id="i-archive" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="5" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8M10 12h4"/></symbol>
+    <symbol id="i-flag" viewBox="0 0 24 24"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1zM4 22v-7"/></symbol>
+    <symbol id="i-palette" viewBox="0 0 24 24"><circle cx="13.5" cy="6.5" r=".5"/><circle cx="17.5" cy="10.5" r=".5"/><circle cx="8.5" cy="7.5" r=".5"/><circle cx="6.5" cy="12.5" r=".5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.93 0 1.65-.75 1.65-1.69 0-.44-.18-.84-.44-1.13-.29-.29-.44-.65-.44-1.13a1.64 1.64 0 0 1 1.67-1.67h2c3.05 0 5.55-2.5 5.55-5.55C21.97 6.01 17.46 2 12 2z"/></symbol>
+    <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></symbol>
+    <symbol id="i-keyboard" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M6 8h.01M10 8h.01M14 8h.01M18 8h.01M6 12h.01M10 12h.01M14 12h.01M18 12h.01M7 16h10"/></symbol>
+    <symbol id="i-panel-left" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/></symbol>
+    <symbol id="i-panel-right" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M15 3v18"/></symbol>
+    <symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 17v5"/><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"/></symbol>
+    <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2.06 12.35a1 1 0 0 1 0-.7 10.75 10.75 0 0 1 19.88 0 1 1 0 0 1 0 .7 10.75 10.75 0 0 1-19.88 0"/><circle cx="12" cy="12" r="3"/></symbol>
+    <symbol id="i-eye-off" viewBox="0 0 24 24"><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c4.97 0 8.93 3.4 9.94 6.65a1 1 0 0 1 0 .7 10.8 10.8 0 0 1-1.54 2.8M14.08 14.16a3 3 0 0 1-4.24-4.24M17.48 17.5A10.75 10.75 0 0 1 2.06 12.35a1 1 0 0 1 0-.7 10.75 10.75 0 0 1 4.45-5.14M2 2l20 20"/></symbol>
+    <symbol id="i-bot" viewBox="0 0 24 24"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2M20 14h2M15 13v2M9 13v2"/></symbol>
+    <symbol id="i-maximize" viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"/></symbol>
+    <symbol id="i-minimize" viewBox="0 0 24 24"><path d="M8 3v3a2 2 0 0 1-2 2H3M21 8h-3a2 2 0 0 1-2-2V3M3 16h3a2 2 0 0 1 2 2v3M16 21v-3a2 2 0 0 1 2-2h3"/></symbol>
+    <symbol id="i-chev-last" viewBox="0 0 24 24"><path d="m7 18 6-6-6-6M17 6v12"/></symbol>
+  </svg>
   <article id="janggi-app">
-    <div id="setting-box">
-      <!-- 고정된 헤더 영역 (스크롤되지 않음) -->
+    <!-- 오른쪽 서랍: 새 대국·그래픽·인터페이스·단축키·해설 (settings.js, drawers.js, css/settings.css, css/drawer.css) -->
+    <aside id="setting-box" class="side-drawer right-drawer" aria-label="대국·설정 서랍" hidden>
+      <div class="drawer-resize" data-side="right" role="separator" aria-orientation="vertical" aria-label="대국·설정 서랍 크기 조절" title="끌어서 서랍 크기 조절"></div>
+      <div class="drawer-main">
       <div class="settings-header">
-        <button id="close-btn" data-action="hideSettingsPanel">X</button>
-        <span class="settings-title">설정</span>
-        <button id="shortcut-btn-in-settings" class="start-settings-btn" data-action="openShortcutModal" title="단축키 지정하기">단축키</button>
+        <span id="rd-drawer-title" class="settings-title">새 대국</span>
+        <span class="rd-tab-actions" data-tab="rd-sec-newgame">
+        <button class="reset-category-btn" data-action="resetCategory1" title="재시작 설정 초기화" aria-label="재시작 설정 초기화"><svg class="ico" aria-hidden="true"><use href="#i-reset"/></svg></button>
+        </span>
+        <span class="rd-tab-actions" data-tab="rd-sec-ai">
+        <button class="reset-category-btn" data-action="refreshRecommendations" title="추천수 다시 분석" aria-label="추천수 다시 분석"><svg class="ico" aria-hidden="true"><use href="#i-reset"/></svg></button>
+        </span>
+        <span class="rd-tab-actions" data-tab="board-view-category">
+        <button class="reset-category-btn" data-action="resetCategoryDrawing" title="그래픽 설정 초기화" aria-label="그래픽 설정 초기화"><svg class="ico" aria-hidden="true"><use href="#i-reset"/></svg></button>
+        <button id="slot-1-btn" class="slot-btn" data-action="selectSlot" data-num="1" title="슬롯 1 불러오기">1</button>
+        <button id="slot-2-btn" class="slot-btn" data-action="selectSlot" data-num="2" title="슬롯 2 불러오기">2</button>
+        <button class="copy-btn" data-action="copyConfigToClipboard" title="설정 클립보드로 복사" aria-label="설정 클립보드로 복사"><svg class="ico" aria-hidden="true"><use href="#i-copy"/></svg></button>
+        </span>
+        <span class="rd-tab-actions" data-tab="settings-category">
+        <button class="reset-category-btn" data-action="resetCategory4" title="인터페이스 설정 초기화" aria-label="인터페이스 설정 초기화"><svg class="ico" aria-hidden="true"><use href="#i-reset"/></svg></button>
+        <button class="copy-btn" data-action="copyConfigToClipboard" title="설정 클립보드로 복사" aria-label="설정 클립보드로 복사"><svg class="ico" aria-hidden="true"><use href="#i-copy"/></svg></button>
+        </span>
+        <span class="rd-tab-actions" data-tab="rd-sec-shortcut">
+        <button class="reset-category-btn" data-action="resetDefaultShortcuts" title="단축키 기본값 복원" aria-label="단축키 기본값 복원"><svg class="ico" aria-hidden="true"><use href="#i-reset"/></svg></button>
+        </span>
+        <span class="drawer-head-actions">
+          <button class="drawer-pin-btn" data-action="toggleDrawerPin" data-value="right" title="서랍 고정 (켜면 판을 덮지 않음)" aria-label="대국·설정 서랍 고정" aria-pressed="false"><svg class="ico" aria-hidden="true"><use href="#i-pin"/></svg></button>
+          <button id="close-btn" class="drawer-close-btn" data-action="closeRightDrawer" title="서랍 닫기" aria-label="대국·설정 서랍 닫기"><svg class="ico" aria-hidden="true"><use href="#i-x"/></svg></button>
+        </span>
       </div>
       
       <!-- 스크롤 가능한 설정 콘텐츠 영역 -->
       <div class="settings-scroll-area">
-        <!-- 1. 상차림 -->
-        <div class="setting-category">
-          <div class="category-header">
-            <span class="category-title">상차림</span>
-            <div class="category-header-actions">
-              <button class="reset-category-btn" data-action="resetCategory1" title="상차림 설정 초기화">🔄</button>
-            </div>
-          </div>
+        <!-- 1. 새 대국: 상차림·진영·인공지능·제한 시간을 고르고 새 대국 -->
+        <div class="setting-category drawer-section" id="rd-sec-newgame">
           <div class="charim-container">
             <div class="charim-table-wrapper">
               <table>
@@ -116,20 +213,197 @@
               <div id="preview-cho" class="charim-preview-tokens"></div>
             </div>
           </div>
+          <table class="settings-table restart-options">
+            <tr>
+              <td>인공지능 대국</td>
+              <td>
+                <div class="flex-end-row">
+                  <select id="ai-mode-select" data-action="changeAiMode">
+                    <option value="1">사용 (AI가 위쪽)</option>
+                    <option value="0">사용 안함 (2인용)</option>
+                  </select>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td>AI 엔진</td>
+              <td>
+                <div class="flex-end-row">
+                  <select id="ai-engine-select" data-action="setAIEnginePref">
+                    <option value="fsf">Fairy-Stockfish (강함)</option>
+                    <option value="builtin">내장 (빠름·약함)</option>
+                  </select>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td>생각 시간</td>
+              <td>
+                <div class="flex-end-row">
+                  <select id="ai-think-select" data-action="setAIThinkMs">
+                    <option value="300">0.3초</option>
+                    <option value="1000">1초</option>
+                    <option value="3000">3초</option>
+                  </select>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td>제한 시간</td>
+              <td>
+                <div class="flex-end-row">
+                  <select id="time-limit-select" data-action="setTimeLimitMinutes" title="한 사람이 쓸 수 있는 시간. 헤더 시간 그래프의 기준이 됩니다">
+                    <option value="0">정하지 않음</option>
+                    <option value="5">5분</option>
+                    <option value="10">10분</option>
+                    <option value="20">20분</option>
+                    <option value="30">30분</option>
+                    <option value="60">60분</option>
+                  </select>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td colspan="2"><div id="ai-engine-status" class="ai-engine-status"></div></td>
+            </tr>
+          </table>
+          <!-- 대국 규칙 (game-rules.js): 카장룰 묶음 또는 개별 규칙 -->
+          <table class="settings-table restart-options rule-options">
+            <tr>
+              <td>대국 규칙</td>
+              <td>
+                <div class="flex-end-row">
+                  <select id="rule-preset-select" data-action="setRulePreset" title="카장룰: 카카오 장기 규칙. 아래 규칙을 하나라도 바꾸면 직접 설정이 됩니다">
+                    <option value="kakao">카장룰</option>
+                    <option value="custom">직접 설정</option>
+                  </select>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td>반복수</td>
+              <td>
+                <div class="flex-end-row rule-checks">
+                  <label title="두면 같은 국면이 세 번째가 되는 수는 둘 수 없습니다"><input type="checkbox" id="rule-repetition" data-action="setRuleRepetition" checked> 3번 반복 금지</label>
+                  <label title="장군을 받고 있는 쪽은 반복이 되어도 둘 수 있습니다 (연속 장군 금지)"><input type="checkbox" id="rule-check-exempt" data-action="setRuleCheckExempt" checked> 장군 받는 쪽 예외</label>
+                  <label title="반복 금지는 기물 점수가 높은 쪽에만 걸립니다"><input type="checkbox" id="rule-higher-yields" data-action="setRuleHigherYields"> 고득점자 양보</label>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td>빅장</td>
+              <td>
+                <div class="flex-end-row">
+                  <select id="rule-bikjang-select" data-action="setRuleBikjang" title="두 궁이 사이에 아무것도 없이 마주 보는 것">
+                    <option value="forbid">금지</option>
+                    <option value="allow">허용 (점수 높은 쪽 승)</option>
+                  </select>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td>종료</td>
+              <td>
+                <div class="flex-end-row rule-checks">
+                  <label title="200수가 되면 끝나고 기물 점수가 높은 쪽이 이깁니다"><input type="checkbox" id="rule-move-limit" data-action="setRuleMoveLimit" checked> 200수 종료</label>
+                  <label title="어느 한쪽 기물 점수가 10점 미만이 되면 끝나고 점수가 높은 쪽이 이깁니다"><input type="checkbox" id="rule-under10" data-action="setRuleUnder10" checked> 10점 미만 종료</label>
+                </div>
+              </td>
+            </tr>
+          </table>
+          <button class="restart-btn" data-action="startNewGame" title="고른 상차림으로 새 대국을 시작합니다 (N)">새 대국 시작</button>
         </div>
 
-        <!-- 2. 장기판 보기 -->
-        <div class="setting-category collapsible collapsed" id="board-view-category">
-          <div class="category-header accordion-toggle" data-action="toggleSettingCategory" data-category-id="board-view-category">
-            <span class="category-title">장기판 보기</span>
-            <div class="category-header-actions" data-stop-propagation="true">
-              <button class="reset-category-btn" data-action="resetCategory2" title="장기판 보기 설정 초기화">🔄</button>
-              <button id="slot-1-btn" class="slot-btn" data-action="selectSlot" data-num="1" title="슬롯 1 불러오기">1</button>
-              <button id="slot-2-btn" class="slot-btn" data-action="selectSlot" data-num="2" title="슬롯 2 불러오기">2</button>
-              <button class="copy-btn" data-action="copyConfigToClipboard" title="설정 클립보드로 복사">📋</button>
-              <span id="board-view-arrow" class="accordion-arrow">▼</span>
+        <!-- 1-2. AI: 추천수 (recommend.js, css/recommend.css) -->
+        <div class="setting-category drawer-section" id="rd-sec-ai">
+          <div class="recommend-section" aria-label="추천수">
+            <label class="recommend-auto-label" title="국면이 바뀔 때마다 엔진이 추천수를 구해 판 위 화살표와 이 목록에 보여 줍니다"><input type="checkbox" id="recommend-auto" checked data-action="setRecommendAuto"> 추천수 보이기 (자동)</label>
+            <ol id="recommend-list" class="recommend-list"></ol>
+            <div id="recommend-status" class="recommend-status"></div>
+          </div>
+          <label class="recommend-auto-label ai-mate-alert" title="추천수 분석 중 엔진이 외통 수순을 찾으면 알려 줍니다 (추천수 보이기가 켜져 있을 때)"><input type="checkbox" id="mate-alert" checked data-action="setMateAlert"> 외통 발견 시 알림</label>
+          <!-- 해설 (commentary.js, css/ai-comment.css). 예전 "해설" 영역을 이 AI 영역으로 합쳤다 -->
+          <div id="ai-comment-section" class="ai-comment-section">
+          <div class="ai-comment-body">
+          <div class="ai-sub-title">해설 <span id="ai-comment-step-label" class="ai-comment-step-label"></span></div>
+          <div class="ai-comment-actions">
+            <button id="ai-comment-move-btn" class="modal-btn save" data-action="requestAIMoveCommentary">방금 둔 수 해설</button>
+            <button id="ai-comment-review-btn" class="modal-btn save" data-action="requestAIReviewCommentary">전체 기보 복기</button>
+          </div>
+          <div class="ai-comment-question-row">
+            <input type="text" id="ai-comment-question-input" class="ai-comment-question-input" maxlength="500" placeholder="지금 국면에 대해 물어보세요 (예: 내 궁이 위험해?)">
+            <button id="ai-comment-ask-btn" class="modal-btn save" data-action="requestAIQuestionCommentary">질문</button>
+          </div>
+
+          <div id="ai-comment-run-status" class="ai-comment-run-status"></div>
+          <div id="ai-comment-progress" class="ai-comment-progress" style="display: none;">
+            <div id="ai-comment-progress-fill" class="ai-comment-progress-fill"></div>
+          </div>
+          <div id="ai-comment-output" class="ai-comment-output" aria-live="polite"></div>
+          <p class="ai-comment-note">해설은 엔진(Fairy-Stockfish, 쓸 수 없으면 내장 2수 읽기)이 계산한 사실을 바탕으로 AI가 쓴 설명입니다. 틀릴 수 있습니다.</p>
+
+        
+          <div class="ai-comment-footer">
+          <button id="ai-comment-stop-btn" class="modal-btn reset" data-action="stopAICommentary" style="display: none;">중지</button>
+          <button id="ai-comment-save-comment-btn" class="modal-btn save" data-action="saveAICommentToStepComment" style="display: none;">수순 코멘트에 저장</button>
+          <button id="ai-comment-save-summary-btn" class="modal-btn save" data-action="saveAICommentToSummary" style="display: none;">기보 총평에 저장</button>
+          </div>
+          </div>
+
+          <details class="ai-comment-settings">
+            <summary>해설 공급자 설정</summary>
+            <div class="ai-comment-settings-body">
+              <label class="ai-comment-setting-row">
+                <span>공급자</span>
+                <select id="ai-comment-provider-select" data-action="changeAICommentProvider">
+                  <option value="auto">자동 선택</option>
+                  <option value="chrome">브라우저 내장 AI (Chrome 등)</option>
+                  <option value="webllm">웹 내장 AI (WebLLM, 모델 내려받기)</option>
+                  <option value="mcp">구독 중인 AI (MCP 도우미)</option>
+                  <option value="proxy" disabled>중계 서버 (유료, 준비 중)</option>
+                </select>
+              </label>
+              <label id="ai-comment-model-row" class="ai-comment-setting-row">
+                <span>웹 내장 모델</span>
+                <select id="ai-comment-model-select" data-action="changeAICommentModel"></select>
+              </label>
+              <label id="ai-comment-port-row" class="ai-comment-setting-row">
+                <span>MCP 도우미 포트</span>
+                <input type="number" id="ai-comment-port-input" class="ai-comment-port-input" min="1024" max="65535" data-action="changeAICommentBridgePort">
+              </label>
+              <div id="ai-comment-provider-status" class="ai-comment-provider-status"></div>
+              <div id="ai-comment-mcp-help" class="ai-comment-mcp-help">
+                <p>구독 중인 AI 앱(Claude Desktop, Claude Code 등)에 <code>tools/janggi-mcp-bridge</code>를 MCP로 등록해 두면, 해설 요청이 그 AI의 의뢰함으로 갑니다.
+                  요청한 뒤 AI 앱에 아래 문장을 말해 주세요.</p>
+                <button class="modal-btn close" data-action="copyAIMcpCommand">"장기 해설 의뢰 처리해줘" 복사</button>
+              </div>
+            </div>
+          </details>
+          </div>
+          <!-- 형세 기록 파일: 자동 저장 파일·내려받기·불러오기 (eval-file.js) -->
+          <div class="ef-section">
+            <div class="ai-sub-title">형세 기록 파일</div>
+            <div id="ef-status" class="ef-status" aria-live="polite"></div>
+            <div class="ef-actions">
+              <button id="ef-choose-btn" class="modal-btn save" data-action="chooseEvalAutoSaveFile" title="저장할 파일을 고르면 기록이 바뀔 때마다 그 파일에 자동으로 저장합니다">자동 저장 파일 정하기</button>
+              <button id="ef-resume-btn" class="modal-btn save" data-action="resumeEvalAutoSave" title="브라우저를 다시 켜면 보안상 한 번 허락해야 같은 파일에 계속 저장합니다" hidden>다시 켜기</button>
+              <button id="ef-stop-btn" class="modal-btn reset" data-action="stopEvalAutoSave" title="자동 저장을 멈춥니다 (파일은 그대로 남습니다)" hidden>끄기</button>
+              <button class="modal-btn close" data-action="downloadEvalHistory" title="지금 형세 기록과 추천수 분석을 JSON 파일로 내려받습니다">내려받기</button>
+              <button class="modal-btn close" data-action="importEvalHistory" title="내려받은 형세 기록 파일을 골라 합칩니다 (더 정교한 판단만 덮어씀)">불러오기</button>
+            </div>
+            <!-- 기보별 형세 분석 폴더: janggi-kibo-work/analysis (eval-share.js) -->
+            <div class="ai-sub-title es-title">기보별 형세 분석 폴더</div>
+            <div id="es-status" class="ef-status" aria-live="polite"></div>
+            <div class="ef-actions">
+              <button id="es-choose-btn" class="modal-btn save" data-action="chooseEvalShareFolder" title="janggi-kibo-work 폴더를 고르면 그 안 analysis 폴더에 기보마다 형세 분석 파일을 자동으로 저장합니다">폴더 정하기</button>
+              <button id="es-resume-btn" class="modal-btn save" data-action="resumeEvalShareFolder" title="브라우저를 다시 켜면 보안상 한 번 허락해야 같은 폴더를 계속 씁니다" hidden>다시 켜기</button>
+              <button id="es-stop-btn" class="modal-btn reset" data-action="stopEvalShareFolder" title="폴더 저장·찾기를 멈춥니다 (파일은 그대로)" hidden>끄기</button>
             </div>
           </div>
+        </div>
+
+        <!-- 2. 그래픽: 장기판 보기 + 애니메이션 -->
+        <div class="setting-category drawer-section" id="board-view-category">
           <div id="board-view-category-content" class="accordion-content">
             <table class="settings-table">
             <tr>
@@ -257,6 +531,7 @@
               <td>이동 가능 위치 모양</td>
               <td>
                 <select id="candi-shape-select" data-action="changeCandiShape">
+                  <option value="corner_square">모서리 사각형 (기본)</option>
                   <option value="empty_circle">빈 원 (경계선)</option>
                   <option value="filled_circle">꽉찬 원</option>
                   <option value="empty_square">빈 사각형</option>
@@ -268,6 +543,7 @@
               <td>
                 <div class="flex-end-row">
                   <select id="candi-color-select" data-action="changeCandiColor">
+                    <option value="#a5484a">탁한 붉은색 (기본)</option>
                     <option value="#3b82f6">파란색 (Blue)</option>
                     <option value="#10b981">초록색 (Green)</option>
                     <option value="#f97316">주황색 (Orange)</option>
@@ -279,21 +555,9 @@
                 </div>
               </td>
             </tr>
-          </table>
-        </div>
-      </div>
-
-        <!-- 3. 애니메이션 -->
-        <div class="setting-category collapsible collapsed" id="anim-category">
-          <div class="category-header accordion-toggle" data-action="toggleSettingCategory" data-category-id="anim-category">
-            <span class="category-title">애니메이션</span>
-            <div class="category-header-actions" data-stop-propagation="true">
-              <button class="reset-category-btn" data-action="resetCategory3" title="애니메이션 설정 초기화">🔄</button>
-              <span id="anim-arrow" class="accordion-arrow">▼</span>
-            </div>
-          </div>
-          <div id="anim-category-content" class="accordion-content">
-            <table class="settings-table">
+            <tr>
+              <td colspan="2" class="section-divider-cell">애니메이션</td>
+            </tr>
             <tr>
               <td>애니메이션 시간(초)</td>
               <td>
@@ -333,16 +597,9 @@
         </div>
       </div>
 
-        <!-- 4. 설정 -->
-        <div class="setting-category collapsible collapsed" id="settings-category">
-          <div class="category-header accordion-toggle" data-action="toggleSettingCategory" data-category-id="settings-category">
-            <span class="category-title">설정</span>
-            <div class="category-header-actions" data-stop-propagation="true">
-              <button class="reset-category-btn" data-action="resetCategory4" title="설정 초기화">🔄</button>
-              <button class="copy-btn" data-action="copyConfigToClipboard" title="설정 클립보드로 복사">📋</button>
-              <span id="settings-arrow" class="accordion-arrow">▼</span>
-            </div>
-          </div>
+
+        <!-- 3. 인터페이스 -->
+        <div class="setting-category drawer-section" id="settings-category">
           <div id="settings-category-content" class="accordion-content">
             <table class="settings-table">
             <tr>
@@ -364,8 +621,8 @@
               <td>설정창 투명도</td>
               <td>
                 <div class="flex-end-gap10">
-                  <input type="range" id="settings-opacity-slider" class="range-slider" min="0.1" max="1.0" step="0.05" value="0.55" data-action="changeSettingsOpacity">
-                  <span id="settings-opacity-val" class="range-value">0.55</span>
+                  <input type="range" id="settings-opacity-slider" class="range-slider" min="0.1" max="1.0" step="0.05" value="0.94" data-action="changeSettingsOpacity">
+                  <span id="settings-opacity-val" class="range-value">0.94</span>
                 </div>
               </td>
             </tr>
@@ -399,17 +656,6 @@
               </td>
             </tr>
             <tr>
-              <td>인공지능 대국 (AI Mode)</td>
-              <td>
-                <div class="flex-end-row">
-                  <select id="ai-mode-select" data-action="changeAiMode">
-                    <option value="0">사용 안함 (로컬 2인용)</option>
-                    <option value="1">사용함 (AI가 항상 위쪽에서 플레이)</option>
-                  </select>
-                </div>
-              </td>
-            </tr>
-            <tr>
               <td>키보드 커서락 모드</td>
               <td>
                 <div class="flex-end-row">
@@ -421,134 +667,67 @@
               </td>
             </tr>
             <tr>
-              <td colspan="2" class="section-divider-cell">점수판 설정</td>
-            </tr>
-            <tr>
-              <td>자동 순환 (Auto Rotation)</td>
+              <td>형세 글자</td>
               <td>
                 <div class="flex-end-row">
-                  <select id="score-auto-rotate" data-action="updateScoreboardSettings">
-                    <option value="true">활성화 (자동)</option>
-                    <option value="false">비활성화 (수동 클릭)</option>
+                  <select id="eval-label-select" data-action="setEvalLabelMode" title="헤더 형세 그래프 가운데의 &quot;형세&quot; 글자">
+                    <option value="blink">깜빡임 (1분마다 5초 동안 3번)</option>
+                    <option value="always">항상 보이기</option>
+                    <option value="off">끄기</option>
                   </select>
                 </div>
               </td>
             </tr>
             <tr>
-              <td>순환 간격</td>
+              <td>여러 수 뒤로 갈 때</td>
               <td>
                 <div class="flex-end-row">
-                  <select id="score-rotate-interval" data-action="updateScoreboardSettings">
-                    <option value="3">3초</option>
-                    <option value="5">5초</option>
-                    <option value="10">10초</option>
-                    <option value="15">15초</option>
+                  <select id="walk-back-select" data-action="setWalkBackMode" title="처음으로·변화도 점 등으로 여러 수 뒤로 갈 때">
+                    <option value="jump">한 번에 (기본)</option>
+                    <option value="rewind">한 수씩 되감기</option>
                   </select>
                 </div>
               </td>
             </tr>
-            <tr>
-              <td>표출 슬라이드 항목</td>
-              <td>
-                <div class="slide-checkboxes-row">
-                  <label class="slide-checkbox-label">
-                    <input type="checkbox" id="score-show-slide1" checked data-action="updateScoreboardSettings"> 점수차
-                  </label>
-                  <label class="slide-checkbox-label">
-                    <input type="checkbox" id="score-show-slide2" checked data-action="updateScoreboardSettings"> 타이머
-                  </label>
-                  <label class="slide-checkbox-label">
-                    <input type="checkbox" id="score-show-slide3" checked data-action="updateScoreboardSettings"> 대회정보
-                  </label>
-                </div>
-              </td>
           </table>
         </div>
       </div>
-      </div>
-    </div>
-
-    <!-- 기보 관리 및 저장창 (기보창) -->
-    <div id="record-box">
-      <!-- 고정된 헤더 영역 (스크롤되지 않음) -->
-      <div class="settings-header">
-        <button id="close-record-btn" data-action="closeRecordModal">X</button>
-        <span class="settings-title">기보</span>
-        <div class="record-header-actions">
-          <button id="img-download-btn" class="record-header-btn" data-action="download" title="장기판 이미지 다운로드">그림 저장</button>
-        </div>
-      </div>
-      
-      <!-- 스크롤 가능한 기보 콘텐츠 영역 -->
-      <div class="settings-scroll-area">
-        <!-- 대국 상세 정보 (접이식 아코디언) -->
-        <div class="setting-category collapsible collapsed" id="metadata-category">
-          <div class="category-header accordion-toggle" data-action="toggleMetadataCategory">
-            <span class="category-title">대국 상세 정보</span>
-            <div class="category-header-actions" data-stop-propagation="true">
-              <button id="save-record-square-btn" class="record-header-action-icon-btn" data-action="saveRecordToLibrary" title="현재 기보 저장 (클립보드 및 보관함)">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
-                  <polyline points="17 21 17 13 7 13 7 21"></polyline>
-                  <polyline points="7 3 7 8 15 8"></polyline>
-                </svg>
-              </button>
-              <button id="load-record-square-btn" class="record-header-action-icon-btn" data-action="loadRecordFromClipboard" title="클립보드 기보 불러오기">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
-                  <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
-                </svg>
-              </button>
-              <span id="accordion-arrow" class="accordion-arrow">▼</span>
-            </div>
-          </div>
-          
-          <div id="metadata-category-content" class="accordion-content">
-            <table class="settings-table">
+        <!-- 4. 단축키 (keyboard.js populateShortcutTable) -->
+        <div class="setting-category drawer-section" id="rd-sec-shortcut">
+          <p class="drawer-section-desc">바꿀 칸을 누른 뒤 새 키를 입력하세요.</p>
+          <table class="shortcut-table">
+            <thead>
               <tr>
-                <td>초나라 대국자</td>
-                <td><input type="text" id="meta-cho-player" class="settings-input" placeholder="초나라 플레이어명" data-action="updateMetadataFromForm"></td>
+                <th>기능</th>
+                <th>주 단축키</th>
+                <th>보조 단축키</th>
               </tr>
-              <tr>
-                <td>한나라 대국자</td>
-                <td><input type="text" id="meta-han-player" class="settings-input" placeholder="한나라 플레이어명" data-action="updateMetadataFromForm"></td>
-              </tr>
-              <tr>
-                <td>대회명</td>
-                <td><input type="text" id="meta-tournament" class="settings-input" placeholder="대회 이름" data-action="updateMetadataFromForm"></td>
-              </tr>
-              <tr>
-                <td>대국정보</td>
-                <td><input type="text" id="meta-round" class="settings-input" placeholder="예: 1국 (2026-07-19)" data-action="updateMetadataFromForm"></td>
-              </tr>
-              <tr>
-                <td>기보별명</td>
-                <td><input type="text" id="meta-nickname" class="settings-input" placeholder="예: 귀마 대 귀마 정석" data-action="updateMetadataFromForm"></td>
-              </tr>
-              <tr>
-                <td>총평</td>
-                <td><textarea id="meta-summary" class="meta-summary-textarea" placeholder="대국에 대한 전반적인 해설이나 총평을 남겨주세요." data-action="updateMetadataFromForm"></textarea></td>
-              </tr>
-            </table>
-            
-            <div class="step-comment-section">
-              <span class="category-title step-comment-title" id="current-step-comment-title">현재 수순 (0수) 코멘트</span>
-              <input type="text" id="current-step-comment" class="settings-input step-comment-input" placeholder="이 수순에 대한 해설 코멘트 입력" data-action="updateCurrentStepComment">
-            </div>
-          </div>
+            </thead>
+            <tbody id="shortcut-table-body">
+              <!-- JS에서 동적으로 채워집니다 -->
+            </tbody>
+          </table>
         </div>
 
-        <!-- 2. 저장된 기보 목록 -->
-        <div class="setting-category">
-          <div class="category-header">
-            <span class="category-title">저장된 기보 목록</span>
-          </div>
-          <div id="saved-records-list" class="saved-records-list-container">
-            <!-- JavaScript dynamically inserts saved record rows here -->
-          </div>
-        </div>
+        <div id="app-version-label" class="app-version-label"></div>
+        <div class="app-license-label">AI 엔진: <a href="https://github.com/fairy-stockfish/Fairy-Stockfish" target="_blank" rel="noopener">Fairy-Stockfish</a> · <a href="vendor/fairy-stockfish/Copying.txt" target="_blank" rel="noopener">GPL-3.0</a></div>
       </div>
-    </div>
+      </div>
+    </aside>
+
+    <!-- 레일: 늘 보이는 서랍 바로가기 아이콘 줄 (drawers.js가 <html> 바로 아래로 옮김, css/drawer.css) -->
+    <nav id="left-rail" class="drawer-rail left-rail" aria-label="기보 서랍 바로가기">
+      <button class="rail-btn" data-action="jumpToDrawerSection" data-value="lv-sec-tree" title="현재 기보 (변화도·수순 이동)" aria-label="현재 기보"><svg class="ico" aria-hidden="true"><use href="#i-branch"/></svg></button>
+      <button class="rail-btn" data-action="jumpToDrawerSection" data-value="metadata-category" title="기보 정보" aria-label="기보 정보"><svg class="ico" aria-hidden="true"><use href="#i-info"/></svg></button>
+      <button class="rail-btn" data-action="jumpToDrawerSection" data-value="lv-sec-saved" title="저장된 기보 (유명 기보 포함)" aria-label="저장된 기보"><svg class="ico" aria-hidden="true"><use href="#i-archive"/></svg></button>
+    </nav>
+    <nav id="right-rail" class="drawer-rail right-rail" aria-label="대국·설정 바로가기">
+      <button class="rail-btn" data-action="jumpToDrawerSection" data-value="rd-sec-newgame" title="새 대국" aria-label="새 대국"><svg class="ico" aria-hidden="true"><use href="#i-flag"/></svg></button>
+      <button class="rail-btn" data-action="jumpToDrawerSection" data-value="rd-sec-ai" title="AI (추천수·외통 알림·해설, C)" aria-label="AI"><svg class="ico" aria-hidden="true"><use href="#i-bot"/></svg></button>
+      <button class="rail-btn" data-action="jumpToDrawerSection" data-value="board-view-category" title="그래픽" aria-label="그래픽"><svg class="ico" aria-hidden="true"><use href="#i-palette"/></svg></button>
+      <button class="rail-btn" data-action="jumpToDrawerSection" data-value="settings-category" title="인터페이스" aria-label="인터페이스"><svg class="ico" aria-hidden="true"><use href="#i-sliders"/></svg></button>
+      <button class="rail-btn" data-action="jumpToDrawerSection" data-value="rd-sec-shortcut" title="단축키" aria-label="단축키"><svg class="ico" aria-hidden="true"><use href="#i-keyboard"/></svg></button>
+    </nav>
 
     <!-- 해설 말풍선 (Neon Glassmorphic Speech Bubble) -->
     <div id="comment-bubble" class="comment-bubble-container" style="display: none; cursor: pointer;" data-action="hideCommentBubble">
@@ -559,103 +738,110 @@
       <div class="comment-bubble-arrow"></div>
     </div>
 
-    <div id="control-box">
-      <div class="control-row">
-        <!-- Turn & Navigation Group (Left) -->
-        <div class="control-group turn-nav-group">
-          <button id="nav-start" class="nav-btn" data-action="goToStart" title="맨 앞으로 이동 (Ctrl + LeftArrow)">
-            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">
-              <line x1="5" y1="5" x2="5" y2="19"></line>
-              <polyline points="19 18 12 12 19 6"></polyline>
-            </svg>
-          </button>
-          <button id="prev" class="nav-btn" data-action="prev" title="이전 수 (Alt + LeftArrow)">
-            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="15 18 9 12 15 6"></polyline>
-            </svg>
-          </button>
-          <div class="turn-display">
-            <input id="turn" type="number" value="0" min="0"></input>
-            <span class="turn-suffix">수</span>
-          </div>
-          <button id="nav-play-btn" class="nav-btn" data-action="toggleAutoplay" title="자동 재생 시작 (P)">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-              <polygon points="6,4 20,12 6,20"/>
-            </svg>
-          </button>
-          <button id="next" class="nav-btn" data-action="next" title="다음 수 (Alt + RightArrow)">
-            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="9 18 15 12 9 6"></polyline>
-            </svg>
-          </button>
-          <button id="nav-end" class="nav-btn" data-action="goToEnd" title="맨 뒤로 이동 (Ctrl + RightArrow)">
-            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="5 6 12 12 5 18"></polyline>
-              <line x1="19" y1="5" x2="19" y2="19"></line>
-            </svg>
-          </button>
-        </div>
-        
-        <!-- Sum/Score Progress Bar Panel (Middle) - Rotating Info Panel -->
-        <div id="score-panel" data-action="rotateScorePanel">
-          <div class="score-slides-wrapper">
-            <!-- Slide 1: 기본 점수판 -->
-            <div class="score-slide active" id="score-slide-1">
-              <div class="score-row">
-                <span id="han-score-val" class="score-label han-label">한: 73.5</span>
-                <span id="diff-score-val" class="score-diff-val">0.0</span>
-                <span id="cho-score-val" class="score-label cho-label">초: 72.0</span>
-              </div>
-              <div class="score-bar-container">
-                <div id="han-score-bar" class="score-bar han-bar"></div>
-                <div id="cho-score-bar" class="score-bar cho-bar"></div>
-              </div>
-            </div>
-            <!-- Slide 2: 대국 시간 타이머 -->
-            <div class="score-slide" id="score-slide-2">
-              <div class="timer-row">
-                <div class="timer-player han-timer">한: <span id="han-timer-val">00:00</span></div>
-                <div class="timer-vs">VS</div>
-                <div class="timer-player cho-timer"><span id="cho-timer-val">00:00</span> :초</div>
-              </div>
-              <div class="timer-active-turn" id="active-turn-timer-desc">초나라 차례</div>
-            </div>
-            <!-- Slide 3: 대국 정보 카드 -->
-            <div class="score-slide" id="score-slide-3">
-              <div class="meta-row">
-                <span id="meta-tournament-display">대회명 미지정</span>
-              </div>
-              <div class="meta-row-players">
-                <span id="meta-cho-player-display">초나라</span> vs <span id="meta-han-player-display">한나라</span>
-              </div>
-            </div>
-          </div>
-          <!-- 슬라이드 제어용 도트 인디케이터 -->
-          <div class="score-slide-dots">
-            <span class="score-dot active" data-action="setScoreSlide" data-index="0" data-stop-propagation="true"></span>
-            <span class="score-dot" data-action="setScoreSlide" data-index="1" data-stop-propagation="true"></span>
-            <span class="score-dot" data-action="setScoreSlide" data-index="2" data-stop-propagation="true"></span>
+    <!-- 대국 헤더: [놓아보기] [N수] [초 이름] [그래프 3줄] [한 이름] [AI 추천수 보이기] (header-graph.js, preview.js, recommend.js, css/controls.css, css/header-graph.css)
+         서랍은 레일 아이콘으로 연다 (drawers.js) -->
+    <div id="game-header" class="game-header">
+      <button id="explore-btn" class="hdr-drawer-btn" data-action="toggleExploreMode" title="놓아보기 켜기 (현재 기보 열기): 켜면 두는 수가 새 가지가 되고 실제 대국은 그대로입니다 (I)" aria-label="놓아보기" aria-controls="preview-panel" aria-pressed="false"><svg class="ico" aria-hidden="true"><use href="#i-if"/></svg></button>
+      <div class="turn-display">
+        <button id="nav-start" class="nav-btn" hidden data-action="goToStart" title="맨 앞으로 이동 (Ctrl + LeftArrow)">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="5" y1="5" x2="5" y2="19"></line>
+            <polyline points="19 18 12 12 19 6"></polyline>
+          </svg>
+        </button>
+        <button id="prev" class="nav-btn" hidden data-action="prev" title="이전 수 (Alt + LeftArrow)">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="15 18 9 12 15 6"></polyline>
+          </svg>
+        </button>
+        <input id="turn" type="number" value="0" min="0" aria-label="수순">
+        <span class="turn-suffix">수</span>
+        <button id="next" class="nav-btn" hidden data-action="next" title="다음 수 (Alt + RightArrow)">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="9 18 15 12 9 6"></polyline>
+          </svg>
+        </button>
+        <button id="nav-end" class="nav-btn" hidden data-action="goToEnd" title="맨 뒤로 이동 (Ctrl + RightArrow)">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="5 6 12 12 5 18"></polyline>
+            <line x1="19" y1="5" x2="19" y2="19"></line>
+          </svg>
+        </button>
+      </div>
+      <span id="hdr-cho-name" class="hdr-side-name cho" title="초 진영 (우클릭: 사용자·AI 고르기)" data-context-action="openSideMenu" data-side="cho"><span class="hdr-name-main">초나라</span><span class="hdr-name-sub" hidden></span></span>
+      <div id="hdr-graph" class="hdr-graph" role="button" tabindex="0" aria-label="시간·기물점수·형세 그래프 (누르면 형세 흐름 그래프)" data-action="openEvalChart">
+        <div class="hg-row hg-time" id="hg-time-row" title="시간: 초는 왼쪽, 한은 오른쪽으로 자랍니다. 노란 막대는 두 사람 차이">
+          <span class="hg-kind" aria-hidden="true">시간</span>
+          <div class="hg-track">
+            <div class="hg-bar cho" id="hg-time-cho"></div>
+            <div class="hg-bar han" id="hg-time-han"></div>
+            <div class="hg-bar diff" id="hg-time-diff"></div>
+            <span class="hg-num cho" id="hg-time-cho-num"></span>
+            <span class="hg-num han" id="hg-time-han-num"></span>
           </div>
         </div>
-        
-        <!-- Icon Actions Group (Setting, Download) (Right) -->
-        <div class="control-group action-icons">
-          <button id="setting-btn" class="icon-btn" data-action="showSettingsPanel" title="설정">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="3"></circle>
-              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-            </svg>
-          </button>
-          <button id="download-btn" class="icon-btn" data-action="openRecordModal" title="기보 저장 및 관리">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
-              <polyline points="17 21 17 13 7 13 7 21"></polyline>
-              <polyline points="7 3 7 8 15 8"></polyline>
-            </svg>
-          </button>
+        <div class="hg-row hg-mat" id="hg-mat-row" title="기물점수: 시작 때 최대 점수 대비 남은 점수. 노란 막대는 점수 차이">
+          <span class="hg-kind" aria-hidden="true">기물</span>
+          <div class="hg-track">
+            <div class="hg-bar cho" id="hg-mat-cho"></div>
+            <div class="hg-bar han" id="hg-mat-han"></div>
+            <div class="hg-bar diff" id="hg-mat-diff"></div>
+            <span class="hg-num cho" id="hg-mat-cho-num"></span>
+            <span class="hg-num han" id="hg-mat-han-num"></span>
+          </div>
+        </div>
+        <div class="hg-row hg-eval" id="hg-eval-row" title="형세: 어림 승률 (초 왼쪽 · 한 오른쪽) · 누르면 형세 흐름 그래프">
+          <span class="hg-kind" aria-hidden="true">형세</span>
+          <div class="hg-track">
+            <div class="hg-bar cho" id="hg-eval-cho"></div>
+            <div class="hg-bar han" id="hg-eval-han"></div>
+            <span class="hg-num cho" id="hg-eval-cho-num"></span>
+            <span class="hg-num han" id="hg-eval-han-num"></span>
+          </div>
+        </div>
+      </div>
+      <span id="hdr-han-name" class="hdr-side-name han" title="한 진영 (우클릭: 사용자·AI 고르기)" data-context-action="openSideMenu" data-side="han"><span class="hdr-name-main">한나라</span><span class="hdr-name-sub" hidden></span></span>
+      <button id="rec-toggle-btn" class="hdr-drawer-btn" data-action="toggleRecommendVisible" title="AI 훈수 숨기기 (추천수 목록과 판 위 화살표) (X)" aria-label="AI 훈수 보이기" aria-pressed="true"><svg class="ico" aria-hidden="true"><use href="#i-ai"/></svg></button>
+    </div>
+
+    <!-- 장기판 우클릭 메뉴: 반전·회전·AI 위임·좌표·커서 (board-menu.js가 항목을 채운다, css/board-menu.css) -->
+    <div id="board-menu" class="side-menu board-menu" role="menu" aria-label="장기판 메뉴" hidden></div>
+
+    <!-- 진영 이름 우클릭 메뉴: 그 진영을 사용자·AI 중에서 고른다 (header-graph.js openSideMenu) -->
+    <div id="side-menu" class="side-menu" role="menu" aria-label="진영 둘 사람" hidden>
+      <div class="side-menu-title" id="side-menu-title">초나라</div>
+      <button class="side-menu-item" role="menuitemradio" aria-checked="false" data-action="setSideController" data-value="user">사용자</button>
+      <button class="side-menu-item" role="menuitemradio" aria-checked="false" data-action="setSideController" data-value="ai">AI</button>
+    </div>
+
+    <!-- 형세 흐름 그래프 창: 헤더 형세 줄을 누르면 열린다 (eval-history.js, css/eval-chart.css) -->
+    <div id="eval-chart-modal" class="eval-chart-modal" data-action="handleEvalChartBackdrop" hidden>
+      <div class="eval-chart-box" role="dialog" aria-modal="true" aria-labelledby="eval-chart-title">
+        <div class="eval-chart-head">
+          <span id="eval-chart-title" class="eval-chart-title">형세 흐름 <small>(초 승률 · 위가 초, 아래가 한)</small></span>
+          <button id="eval-chart-full-btn" class="eval-chart-full-btn" data-action="toggleEvalChartFull" title="전체 화면으로 보기" aria-label="형세 그래프 전체 화면으로 보기" aria-pressed="false"><svg class="ico" aria-hidden="true"><use href="#i-maximize"/></svg></button>
+          <button class="eval-chart-close" data-action="closeEvalChart" title="닫기 (Esc)" aria-label="형세 그래프 닫기"><svg class="ico" aria-hidden="true"><use href="#i-x"/></svg></button>
+        </div>
+        <div id="eval-chart-plot" class="eval-chart-plot"></div>
+        <div class="eval-chart-foot">
+          <span id="eval-chart-status" class="eval-chart-status"></span>
+          <span class="eval-chart-hint">점을 누르면 그 수로 갑니다</span>
         </div>
       </div>
     </div>
+
+    <!-- 같은 기보의 형세 분석이 여러 개일 때 고르는 팝업 (eval-share.js, css/eval-share.css) -->
+    <div id="es-pick-modal" class="es-pick-modal" data-action="handleEvalShareBackdrop" hidden>
+      <div class="es-pick-box" role="dialog" aria-modal="true" aria-labelledby="es-pick-title">
+        <div class="es-pick-head">
+          <span id="es-pick-title" class="es-pick-title">형세 분석 고르기</span>
+          <button class="es-pick-close" data-action="closeEvalSharePicker" title="가져오지 않고 닫기 (Esc)" aria-label="형세 분석 고르기 닫기"><svg class="ico" aria-hidden="true"><use href="#i-x"/></svg></button>
+        </div>
+        <p class="es-pick-desc">이 대국의 형세 분석이 여러 개 있습니다. 좋아요 → 정밀도 → 최신 순입니다. 가져올 분석을 고르세요.</p>
+        <ol id="es-pick-list" class="es-pick-list"></ol>
+      </div>
+    </div>
+
     <svg id="janggi-svg" xmlns="http://www.w3.org/2000/svg" xmlns:xml="http://www.w3.org/XML/1998/namespace"
       xmlns:xlink="http://www.w3.org/1999/xlink">
 
@@ -1089,46 +1275,6 @@
     </svg>
 
     <!-- 단축키 지정 모달 -->
-    <div id="shortcut-modal" class="modal-overlay" data-action="handleModalOverlayClick">
-      <div class="modal-content">
-        <div class="modal-header">
-          <span class="modal-title">단축키 지정</span>
-          <button class="modal-close" data-action="closeShortcutModal">X</button>
-        </div>
-        <div class="modal-body">
-          <p class="modal-description">변경할 기능을 선택한 뒤, 새로운 키를 입력해 주세요.</p>
-          
-          <div class="modal-theme-row modal-theme-row-mb">
-            <div class="modal-theme-group">
-              <span class="modal-theme-label">배경 색상:</span>
-              <input type="color" id="modal-bg-picker" class="modal-color-picker" data-action="changeModalBgColor">
-            </div>
-            <div class="modal-theme-group-grow">
-              <span class="modal-theme-label">투명도:</span>
-              <input type="range" id="modal-opacity-slider" class="modal-range-slider" min="0.3" max="1.0" step="0.05" data-action="changeModalOpacity">
-              <span id="modal-opacity-val" class="modal-range-value">0.9</span>
-            </div>
-          </div>
-
-          <table class="shortcut-table">
-            <thead>
-              <tr>
-                <th>기능</th>
-                <th>주 단축키</th>
-                <th>보조 단축키</th>
-              </tr>
-            </thead>
-            <tbody id="shortcut-table-body">
-              <!-- JS에서 동적으로 채워집니다 -->
-            </tbody>
-          </table>
-        </div>
-        <div class="modal-footer">
-          <button class="modal-btn reset" data-action="resetDefaultShortcuts">기본값 복원</button>
-          <button class="modal-btn close" data-action="closeShortcutModal">닫기</button>
-        </div>
-      </div>
-    </div>
     <!-- 코멘트 입력 모달 -->
     <div id="comment-modal" class="modal-overlay" data-action="handleCommentModalOverlayClick">
       <div class="modal-content">
@@ -1164,6 +1310,148 @@
         </div>
       </div>
     </div>
+
+    <!-- 기보보기 패널: 변화도(본선+가지), 수순 이동, 두어보기, 대국 정보·저장 (preview.js, variation-tree.js, record.js, css/variation.css) -->
+    <aside id="preview-panel" class="preview-panel side-drawer left-drawer" aria-label="기보 서랍" hidden>
+      <div class="drawer-resize" data-side="left" role="separator" aria-orientation="vertical" aria-label="기보 서랍 크기 조절" title="끌어서 서랍 크기 조절"></div>
+      <div class="drawer-main">
+      <div class="preview-panel-header">
+        <button class="preview-drawer-handle" data-action="togglePreviewDrawer" title="기보보기 펼치기/접기" aria-label="기보보기 펼치기/접기"></button>
+        <div class="preview-panel-title">
+          <span id="lv-drawer-title" class="lv-drawer-title">현재 기보</span>
+          <span id="preview-mode-chip" class="preview-mode-chip" hidden><span class="preview-badge-dot"></span>놓아보기 중</span>
+          <span id="preview-var-count" class="preview-var-count" hidden></span>
+          <button id="save-record-square-btn" class="record-header-action-icon-btn lv-meta-only" data-action="saveRecordToLibrary" aria-label="현재 기보 저장" title="현재 기보 저장 (클립보드 및 보관함)">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+              <polyline points="17 21 17 13 7 13 7 21"></polyline>
+              <polyline points="7 3 7 8 15 8"></polyline>
+            </svg>
+          </button>
+          <button id="load-record-square-btn" class="record-header-action-icon-btn lv-meta-only" data-action="loadRecordFromClipboard" aria-label="클립보드 기보 불러오기" title="클립보드 기보 불러오기">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+              <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+            </svg>
+          </button>
+          <button id="img-download-btn" class="record-header-action-icon-btn lv-tree-only" data-action="download" title="장기판 그림 저장" aria-label="장기판 그림 저장"><svg class="ico sm" aria-hidden="true"><use href="#i-image"/></svg></button>
+          <span class="drawer-head-actions">
+            <button class="drawer-pin-btn" data-action="toggleDrawerPin" data-value="left" title="서랍 고정 (켜면 판을 덮지 않음)" aria-label="기보 서랍 고정" aria-pressed="false"><svg class="ico" aria-hidden="true"><use href="#i-pin"/></svg></button>
+            <button class="preview-close-btn" data-action="closeLeftDrawer" title="서랍 닫기" aria-label="기보 서랍 닫기"><svg class="ico" aria-hidden="true"><use href="#i-x"/></svg></button>
+          </span>
+        </div>
+        <div id="meta-tournament-display" class="drawer-tournament lv-tree-only" title="대회명·대국정보 (기보 정보에서 고칩니다)"></div>
+        <div id="preview-position-label" class="preview-position-label" hidden></div>
+        <div id="preview-status" class="preview-status lv-tree-only"></div>
+      </div>
+      <div class="preview-controls">
+        <div class="preview-nav">
+          <button class="preview-btn" data-action="previewFirst" title="처음으로 (Home)" aria-label="처음으로"><svg class="ico" aria-hidden="true"><use href="#i-chev-first"/></svg></button>
+          <button class="preview-btn" data-action="previewStep" data-delta="-1" title="한 수 뒤로 (Alt+←)" aria-label="한 수 뒤로"><svg class="ico" aria-hidden="true"><use href="#i-chevl"/></svg></button>
+          <button id="nav-play-btn" class="preview-btn" data-action="toggleAutoplay" title="자동 재생 시작 (P)" aria-label="자동 재생 시작"><svg class="ico" aria-hidden="true"><use href="#i-play"/></svg></button>
+          <button class="preview-btn" data-action="previewStep" data-delta="1" title="한 수 앞으로 (Alt+→)" aria-label="한 수 앞으로"><svg class="ico" aria-hidden="true"><use href="#i-chevr"/></svg></button>
+          <button class="preview-btn" data-action="previewLast" title="마지막으로 (End)" aria-label="마지막으로"><svg class="ico" aria-hidden="true"><use href="#i-chev-last"/></svg></button>
+        </div>
+        <button id="preview-exit-btn" class="preview-btn exit" data-action="exitPreviewMode" title="놓아보기를 끝내고 들어오기 직전 국면(실제 대국)으로 돌아갑니다" hidden>본선 복귀</button>
+      </div>
+      <div class="preview-panel-body">
+        <!-- 변화도: 눈 아이콘으로 수순 글자 보이기·숨기기 (variation-tree.js toggleVariationMoveTexts) -->
+        <div class="vt-section drawer-section" id="lv-sec-tree">
+        <div class="vt-head">
+          <span class="category-title">변화도</span>
+          <span id="eh-refine-status" class="eh-refine-status" aria-live="polite"></span>
+          <span class="vt-head-actions">
+            <button id="vt-text-toggle" class="vt-eye-btn" data-action="toggleVariationMoveTexts" title="수순 글자 보이기" aria-label="수순 글자 보이기" aria-pressed="false"><svg class="ico sm" aria-hidden="true"><use href="#i-eye-off"/></svg></button>
+            <button id="vt-fit-toggle" class="vt-eye-btn" data-action="toggleVariationFitAll" title="전체 보기 (트리 전체를 한 화면에)" aria-label="변화도 전체 보기" aria-pressed="false"><svg class="ico sm" aria-hidden="true"><use href="#i-maximize"/></svg></button>
+          </span>
+        </div>
+        <div id="variation-tree" class="variation-tree"></div>
+        <div class="preview-legend" aria-label="색 구분">
+          <span title="착수 전후 승률이 10%p 이상 바뀐 수"><i style="background:#eab308"></i>변화가 많은 수</span>
+          <span><i style="background:#ef4444"></i>외통</span>
+          <span title="가지 끝에 나중에 돌아와 이어 둔 첫 수 (같은 가지로 이어짐)"><i style="background:#facc15; box-shadow: 0 0 0 1.5px #ffffff"></i>이어 둔 수</span>
+          <button id="preview-delete-btn" class="preview-btn danger" data-action="deleteCurrentVariation" hidden>이 가지 지우기</button>
+        </div>
+        </div>
+        <div class="record-sections">
+        <div class="setting-category drawer-section" id="metadata-category">
+          
+          <div id="metadata-category-content" class="metadata-content">
+            <table class="settings-table">
+              <tr>
+                <td>초나라 대국자</td>
+                <td><input type="text" id="meta-cho-player" class="settings-input" placeholder="초나라 플레이어명" data-action="updateMetadataFromForm"></td>
+              </tr>
+              <tr>
+                <td>한나라 대국자</td>
+                <td><input type="text" id="meta-han-player" class="settings-input" placeholder="한나라 플레이어명" data-action="updateMetadataFromForm"></td>
+              </tr>
+              <tr>
+                <td>대회명</td>
+                <td><input type="text" id="meta-tournament" class="settings-input" placeholder="대회 이름" data-action="updateMetadataFromForm"></td>
+              </tr>
+              <tr>
+                <td>대국정보</td>
+                <td><input type="text" id="meta-round" class="settings-input" placeholder="예: 1국 (2026-07-19)" data-action="updateMetadataFromForm"></td>
+              </tr>
+              <tr>
+                <td>기보별명</td>
+                <td><input type="text" id="meta-nickname" class="settings-input" placeholder="예: 귀마 대 귀마 정석" data-action="updateMetadataFromForm"></td>
+              </tr>
+              <tr>
+                <td>총평</td>
+                <td><textarea id="meta-summary" class="meta-summary-textarea" placeholder="대국에 대한 전반적인 해설이나 총평을 남겨주세요." data-action="updateMetadataFromForm"></textarea></td>
+              </tr>
+            </table>
+            
+            <div class="step-comment-section">
+              <span class="category-title step-comment-title" id="current-step-comment-title">현재 수순 (0수) 코멘트</span>
+              <input type="text" id="current-step-comment" class="settings-input step-comment-input" placeholder="이 수순에 대한 해설 코멘트 입력" data-action="updateCurrentStepComment">
+            </div>
+          </div>
+        </div>
+
+        <div class="setting-category drawer-section" id="lv-sec-saved">
+          <!-- 내 기보: 직접 저장하거나 불러온 대국 (record.js). 없으면 묶음째 숨긴다 -->
+          <div class="record-group" id="record-group-mine" data-group="mine">
+            <button class="record-group-head" data-action="toggleRecordGroup" data-value="mine" aria-expanded="true">
+              <span class="record-group-name">내 기보</span><span id="record-group-mine-count" class="record-group-count"></span>
+              <svg class="ico sm record-group-chev" aria-hidden="true"><use href="#i-chev"/></svg>
+            </button>
+            <div class="record-group-body">
+              <div id="saved-records-list" class="saved-records-list-container">
+                <!-- JavaScript dynamically inserts saved record rows here -->
+              </div>
+            </div>
+          </div>
+          <!-- 유명 기보 (famous-games.js, css/famous-games.css) -->
+          <div class="record-group famous-games" id="record-group-famous" data-group="famous">
+            <button class="record-group-head" data-action="toggleRecordGroup" data-value="famous" aria-expanded="true">
+              <span class="record-group-name">유명 기보</span><span id="record-group-famous-count" class="record-group-count"></span>
+              <svg class="ico sm record-group-chev" aria-hidden="true"><use href="#i-chev"/></svg>
+            </button>
+            <div class="record-group-body">
+              <!-- 검색·필터 (기보가 FAMOUS_FILTER_MIN개 이상일 때만 보임) -->
+              <div id="famous-filter" class="famous-filter" hidden>
+                <input type="search" id="famous-filter-q" class="famous-filter-q" placeholder="대회명·대국자명 검색" aria-label="대회명·대국자명 검색" data-action="setFamousQuery" autocomplete="off">
+                <div class="famous-filter-row">
+                  <select id="famous-filter-opening" class="famous-filter-select" aria-label="포진" data-action="setFamousOpening"></select>
+                  <select id="famous-filter-year" class="famous-filter-select" aria-label="연도" data-action="setFamousYear"></select>
+                </div>
+                <div class="famous-filter-row famous-filter-foot">
+                  <span id="famous-filter-status" class="famous-filter-status" aria-live="polite"></span>
+                  <button type="button" class="famous-filter-reset" data-action="resetFamousFilter">조건 지우기</button>
+                </div>
+              </div>
+              <ul id="famous-games-list" class="famous-games-list"></ul>
+              <button type="button" id="famous-more" class="famous-more" data-action="showMoreFamousGames" hidden>더 보기</button>
+            </div>
+          </div>
+        </div>
+        </div>
+      </div>
+      </div>
+    </aside>
   </article>
 </body>
 

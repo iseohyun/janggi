@@ -1,0 +1,471 @@
+/**
+ * @fileoverview 왼쪽 기보 서랍(#preview-panel) 스타일: 변화도 SVG, 수순 이동, 두어보기 표시, 대국 정보·저장 칸.
+ * 서랍 위치·크기·고정·애니메이션과 레일은 css/drawer.css.
+ * 패널 안의 기보 보관함·대국 정보 폼 세부 모양은 css/record.css를 따른다.
+ */
+
+/* 서랍 자체가 [hidden]일 때는 css/drawer.css가 밀어 넣는 애니메이션으로 감춘다. 안쪽 요소만 바로 감춘다 */
+.preview-panel [hidden] {
+  display: none !important;
+}
+
+/* ===== 두어보기 중 표시: 판 테두리와 수순 칸을 노랗게 ===== */
+body.previewing #janggi-svg {
+  outline: 3px solid rgba(251, 191, 36, 0.85);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+body.previewing #turn {
+  color: #f59e0b;
+}
+
+.preview-badge-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #fbbf24;
+  flex-shrink: 0;
+  animation: preview-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes preview-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
+/* ===== 패널 (위치·크기·여닫기 애니메이션은 css/drawer.css) ===== */
+.preview-panel {
+  background: rgba(15, 23, 42, 0.94);
+  color: var(--color-text-primary);
+  backdrop-filter: blur(8px);
+  font-size: 13px;
+}
+
+.preview-panel-header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.preview-panel-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.preview-mode-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(251, 191, 36, 0.15);
+  border: 1px solid rgba(251, 191, 36, 0.5);
+  color: #fcd34d;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.preview-var-count {
+  margin-left: auto;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.preview-close-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: color var(--transition-fast), background var(--transition-fast);
+}
+
+.preview-var-count:empty + .preview-close-btn {
+  margin-left: auto;
+}
+
+.preview-close-btn:hover {
+  color: var(--color-text-primary);
+  background: var(--color-bg-hover);
+}
+
+.preview-position-label {
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.preview-status {
+  font-size: 12px;
+  color: #fcd34d;
+  min-height: 1.2em;
+}
+
+.preview-drawer-handle {
+  display: none;
+}
+
+/* 수순 이동·두어보기 버튼 */
+.preview-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.preview-nav {
+  display: flex;
+  gap: 4px;
+  width: 100%;
+}
+
+.preview-btn {
+  flex: 1 1 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border-light);
+  background: var(--color-bg-input);
+  color: var(--color-text-primary);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.preview-btn:hover:not(:disabled) {
+  background: var(--color-bg-hover);
+}
+
+.preview-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.preview-btn.ai {
+  background: rgba(34, 197, 94, 0.18);
+  border-color: rgba(34, 197, 94, 0.55);
+}
+
+.preview-btn.exit {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.preview-btn.exit:hover {
+  background: var(--color-primary-dark);
+}
+
+.preview-btn.danger {
+  flex: 0 0 auto;
+  min-height: 26px;
+  margin-left: auto;
+  padding: 2px 8px;
+  background: transparent;
+  color: #fca5a5;
+  border-color: rgba(248, 113, 113, 0.4);
+  font-size: 11px;
+}
+
+/* 본문: 변화도 + 대국 정보·저장, 함께 스크롤 */
+.preview-panel-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.variation-tree {
+  flex: 0 0 auto;
+  max-height: 52vh;
+  min-height: 80px;
+  overflow: auto;
+  padding: 6px 4px;
+}
+
+.variation-tree-svg {
+  display: block;
+}
+
+.vt-line {
+  fill: none;
+  stroke-width: var(--vt-lw, 2.5);
+  stroke-linecap: round;
+}
+
+.vt-main {
+  stroke-width: calc(var(--vt-lw, 2.5) * 1.2);
+}
+
+.vt-main-ghost {
+  stroke: rgba(226, 232, 240, 0.18);
+  stroke-width: 2;
+  stroke-dasharray: 2 4;
+}
+
+.vt-return {
+  stroke-dasharray: 4 4;
+  opacity: 0.8;
+}
+
+.vt-dot {
+  stroke: #0f172a;
+  stroke-width: var(--vt-dw, 1.5);
+  cursor: pointer;
+  transition: r 0.1s;
+}
+
+.vt-dot:hover,
+.vt-dot:focus-visible {
+  r: 6.5;
+  outline: none;
+}
+
+.vt-cursor-ring {
+  fill: none;
+  stroke: #fbbf24;
+  stroke-width: 2.5;
+  pointer-events: none;
+}
+
+.vt-entry-ring {
+  fill: none;
+  stroke: rgba(147, 197, 253, 0.8);
+  stroke-width: 1.5;
+  stroke-dasharray: 2 2;
+  pointer-events: none;
+}
+
+.vt-step-label {
+  fill: var(--color-text-muted);
+  font-size: 10px;
+  text-anchor: end;
+  dominant-baseline: central;
+  user-select: none;
+}
+
+.vt-step-label.entry {
+  fill: #93c5fd;
+  font-weight: 700;
+}
+
+.vt-move-text {
+  fill: var(--color-text-secondary);
+  font-size: 11.5px;
+  dominant-baseline: central;
+  cursor: pointer;
+  user-select: none;
+}
+
+.vt-move-text:hover {
+  fill: var(--color-text-primary);
+}
+
+.vt-move-text.current {
+  fill: #fcd34d;
+  font-weight: 800;
+}
+
+/* 범례 */
+.preview-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  padding: 8px 14px;
+  border-top: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+  font-size: 11px;
+}
+
+.preview-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.preview-legend i {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+/* 대국 정보·저장 (기존 기보창 내용) */
+.record-sections {
+  padding: 8px 14px 14px;
+  border-top: 1px solid var(--color-border);
+}
+
+.record-sections .setting-category {
+  margin-bottom: 10px;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+}
+
+.record-sections .category-header {
+  height: 30px;
+  margin-bottom: 6px;
+}
+
+.record-sections .category-title {
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.record-sections .settings-table td {
+  font-size: 12.5px;
+  padding: 5px 2px;
+}
+
+/* 패널 안 아이콘은 선형 1.75px (WebApp Common GUI) */
+.preview-panel button svg {
+  stroke-width: 1.75;
+}
+
+/* ===== 모바일 (서랍 위치·크기는 css/drawer.css) ===== */
+@media (max-width: 849px) {
+  .preview-panel-header {
+    padding: 6px 12px 4px;
+    gap: 2px;
+  }
+
+  .preview-position-label {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .preview-controls {
+    padding: 6px 12px;
+    flex-wrap: nowrap;
+  }
+
+  .preview-nav {
+    width: auto;
+  }
+
+  .preview-btn {
+    min-height: 32px;
+    padding: 4px 6px;
+    font-size: 12px;
+  }
+
+  .variation-tree {
+    max-height: none;
+  }
+}
+
+/* ===== 변화도 머리: 눈 아이콘으로 수순 글자 보이기·숨기기 (variation-tree.js) ===== */
+.vt-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px 0;
+}
+
+.vt-eye-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: color var(--transition-fast), background var(--transition-fast);
+}
+
+.vt-eye-btn:hover {
+  color: var(--color-text-primary);
+  background: var(--color-bg-hover);
+}
+
+.vt-eye-btn.active {
+  color: #fbbf24;
+}
+
+/* ===== 추천수 호버: 그 수가 있는 가지만 남기고 다른 가지를 살짝 음영 ===== */
+.variation-tree-svg [data-var] {
+  transition: opacity 0.18s ease;
+}
+
+.variation-tree-svg.vt-focus [data-var]:not(.vt-keep) {
+  opacity: 0.22;
+}
+
+/* ===== 가지 재생 중: 지나가는 수순을 주황으로 강조 ===== */
+.variation-tree-svg.playing .vt-cursor-ring {
+  stroke: #f97316;
+  stroke-width: 3;
+  animation: vt-play-pulse 0.7s ease-in-out infinite;
+}
+
+.variation-tree-svg .vt-dot.vt-dot-playing {
+  fill: #fde047;
+  stroke: #f97316;
+  stroke-width: 2;
+}
+
+.variation-tree-svg.playing .vt-move-text.current {
+  fill: #fb923c;
+}
+
+@keyframes vt-play-pulse {
+  0%, 100% { stroke-opacity: 1; }
+  50% { stroke-opacity: 0.45; }
+}
+
+/* 변화도 머리 아이콘 묶음: 수순 글자 · 전체 보기 */
+.vt-head-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+/* 기다리는 동안 형세를 다듬는 중 (eval-history.js) */
+.eh-refine-status {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  text-align: right;
+}
+
+/* 가지 번호 (variation-tree.js): 갈라진 첫 수 옆 */
+.vt-branch-num {
+  font-size: 10px;
+  font-weight: 800;
+  fill: #86efac;
+  dominant-baseline: central;
+  paint-order: stroke;
+  stroke: #0f172a;
+  stroke-width: 3px;
+  pointer-events: none;
+}

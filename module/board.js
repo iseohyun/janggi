@@ -1,12 +1,12 @@
 /**
- * @fileoverview 장기판 SVG 렌더링, 기물 위치 배치, 이동 후보지 마커 표시 및 점수 막대 갱신 (board.js)
+ * @fileoverview 장기판 SVG 렌더링, 기물 위치 배치, 이동 후보지 마커 표시 및 기물점수 그래프 갱신 호출 (board.js)
  */
 
 /**
  * 뷰포트 및 컨테이너 크기에 맞춰 장기판 크기(unitSize, boardWidth, boardHeight)를 계산하고 보드를 초기화합니다.
  */
 function initBoard() {
-  const controlBox = document.getElementById("control-box");
+  const controlBox = document.getElementById("game-header");
   const container = controlBox.parentElement || document.body;
 
   let containerWidth = container.clientWidth || window.innerWidth;
@@ -50,7 +50,8 @@ function initBoard() {
   boardWidth = unitSize * 9 + boardPaddingLeft + boardPaddingRight;
   boardHeight = unitSize * 10 + boardPaddingTop + boardPaddingBottom;
 
-  controlBox.style.width = `${boardWidth}px`;
+  // 헤더는 판 폭에 맞추되, 판이 아주 작아도 그래프가 읽히도록 최소 폭을 둔다
+  controlBox.style.width = `${Math.max(boardWidth, Math.min(containerWidth - 8, 360))}px`;
 
   drawBoard();
 
@@ -307,36 +308,11 @@ function updateKeyboardCursor() {
 }
 
 /**
- * 양 진영의 기물 점수를 계산하여 상단 점수판 텍스트 및 게이지 막대를 갱신합니다.
+ * 양 진영의 기물 점수를 계산하여 헤더의 기물점수 그래프를 갱신합니다 (header-graph.js).
  */
 function updateScore() {
   const { scoreCho, scoreHan } = calculateTeamScores();
-
-  document.getElementById("han-score-val").textContent = `한: ${scoreHan.toFixed(1)}`;
-  document.getElementById("cho-score-val").textContent = `초: ${scoreCho.toFixed(1)}`;
-
-  const scoreDiff = Math.abs(scoreHan - scoreCho);
-  const diffEl = document.getElementById("diff-score-val");
-  diffEl.textContent = scoreDiff.toFixed(1);
-
-  if (scoreHan > scoreCho) {
-    diffEl.style.color = "#b91c1c";
-  } else if (scoreCho > scoreHan) {
-    diffEl.style.color = "#1e3a8a";
-  } else {
-    diffEl.style.color = "#0f172a";
-  }
-
-  const total = scoreHan + scoreCho;
-  let hanPercent = 50;
-  let choPercent = 50;
-  if (total > 0) {
-    hanPercent = (scoreHan / total) * 100;
-    choPercent = 100 - hanPercent;
-  }
-
-  document.getElementById("han-score-bar").style.width = `${hanPercent}%`;
-  document.getElementById("cho-score-bar").style.width = `${choPercent}%`;
+  if (typeof hgUpdateMaterial === "function") hgUpdateMaterial(scoreCho, scoreHan);
 }
 
 /**
@@ -364,69 +340,83 @@ function moveSelectBox(i, visible = true) {
   selectBox.setAttribute("height", unitSize);
 }
 
+const CANDI_SIZE_RATIO = 0.62; // 후보지 크기 = 칸 크기 × 이 값 (기물 크기와 상관없이 같다)
+const CANDI_ANIM_MS = 220; // 후보지 하나가 나타나는 시간
+const CANDI_STAGGER_MS = 28; // 가까운 거리부터: 거리 순위 한 단계마다 늦추는 시간 (앞의 것이 끝나기를 기다리지 않는다)
+const CANDI_START_SCALE = 0.35; // 나타나기 시작할 때 크기
+const CANDI_SVG_NS = "http://www.w3.org/2000/svg";
+
 /**
- * 단일 이동 후보지 마커 SVG 엘리먼트를 생성하고 클릭 이벤트를 바인딩합니다.
+ * 후보지 모양을 (0,0) 가운데에 그립니다.
+ * @param {SVGGElement} group
+ * @param {number} size - 한 변 길이
+ */
+function drawCandiShape(group, size) {
+  const half = size / 2;
+  const mk = (tag, attrs) => {
+    const el = document.createElementNS(CANDI_SVG_NS, tag);
+    Object.keys(attrs).forEach(k => el.setAttribute(k, attrs[k]));
+    group.appendChild(el);
+    return el;
+  };
+  if (candiShapeType === "corner_square") {
+    // 사각형의 모서리만 그리고 변은 비운다. 누르는 자리는 투명한 사각형 전체
+    mk("rect", { x: -half, y: -half, width: size, height: size, fill: "transparent", "pointer-events": "all" });
+    const arm = size * 0.3;
+    const d = [
+      `M${-half} ${-half + arm}V${-half}H${-half + arm}`,
+      `M${half - arm} ${-half}H${half}V${-half + arm}`,
+      `M${half} ${half - arm}V${half}H${half - arm}`,
+      `M${-half + arm} ${half}H${-half}V${half - arm}`
+    ].join("");
+    mk("path", {
+      d,
+      fill: "none",
+      stroke: candiColorType,
+      "stroke-width": Math.max(2.5, size * 0.07),
+      "stroke-linecap": "round",
+      "stroke-linejoin": "round",
+      "pointer-events": "none"
+    });
+  } else if (candiShapeType === "empty_square") {
+    mk("rect", {
+      x: -half * 0.8, y: -half * 0.8, width: size * 0.8, height: size * 0.8, rx: size * 0.1, ry: size * 0.1,
+      fill: candiColorType, "fill-opacity": "0.2", stroke: candiColorType, "stroke-width": "4", "pointer-events": "all"
+    });
+  } else if (candiShapeType === "filled_circle") {
+    mk("circle", { cx: 0, cy: 0, r: size * 0.4, fill: candiColorType, "fill-opacity": "0.75", "pointer-events": "all" });
+  } else {
+    mk("circle", {
+      cx: 0, cy: 0, r: size * 0.4, fill: candiColorType, "fill-opacity": "0.2",
+      stroke: candiColorType, "stroke-width": "4", "pointer-events": "all"
+    });
+  }
+}
+
+/**
+ * 선택된 기물의 이동 후보지 마커 하나를 판 위에 만듭니다.
+ * 바깥 g는 착수 위치(가운데)로 옮기고, 안쪽 g가 나타나는 애니메이션을 맡는다.
  * @param {number} i - 선택된 기물 ID
  * @param {number} x - 후보지 X 좌표
  * @param {number} y - 후보지 Y 좌표
+ * @returns {{box: SVGGElement, inner: SVGGElement, cx: number, cy: number}|null}
  */
 function createCandiBox(i, x, y) {
   if (x < 1 || x > 9 || !isValidY(y)) {
-    return;
+    return null;
   }
 
-  const ratio = getPieceSizeRatio(i);
-  let tmpAxis = getAxis(x, y);
-  let targetX = tmpAxis.x - (unitSize * ratio) / 2;
-  let targetY = tmpAxis.y - (unitSize * ratio) / 2;
-
-  const candiBox = document.createElementNS("http://www.w3.org/2000/svg", "g");
+  const center = getAxis(x, y);
+  const candiBox = document.createElementNS(CANDI_SVG_NS, "g");
   candiBox.setAttribute("class", "candi-svg");
   candiBox.setAttribute("pointer-events", "all");
-  candiBox.setAttribute("transform", `translate(${targetX}, ${targetY})`);
+  candiBox.setAttribute("transform", `translate(${center.x}, ${center.y})`);
   candiBox.style.cursor = "pointer";
 
-  const boxSize = unitSize * ratio;
-  const center = boxSize / 2;
-
-  if (candiShapeType === "empty_square") {
-    const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-    rect.setAttribute("x", boxSize * 0.1);
-    rect.setAttribute("y", boxSize * 0.1);
-    rect.setAttribute("width", boxSize * 0.8);
-    rect.setAttribute("height", boxSize * 0.8);
-    rect.setAttribute("rx", boxSize * 0.1);
-    rect.setAttribute("ry", boxSize * 0.1);
-    rect.setAttribute("fill", candiColorType);
-    rect.setAttribute("fill-opacity", "0.2");
-    rect.setAttribute("stroke", candiColorType);
-    rect.setAttribute("stroke-width", "4");
-    rect.setAttribute("pointer-events", "all");
-    rect.style.pointerEvents = "auto";
-    candiBox.appendChild(rect);
-  } else if (candiShapeType === "filled_circle") {
-    const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-    circle.setAttribute("cx", center);
-    circle.setAttribute("cy", center);
-    circle.setAttribute("r", boxSize * 0.4);
-    circle.setAttribute("fill", candiColorType);
-    circle.setAttribute("fill-opacity", "0.75");
-    circle.setAttribute("pointer-events", "all");
-    circle.style.pointerEvents = "auto";
-    candiBox.appendChild(circle);
-  } else {
-    const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-    circle.setAttribute("cx", center);
-    circle.setAttribute("cy", center);
-    circle.setAttribute("r", boxSize * 0.4);
-    circle.setAttribute("fill", candiColorType);
-    circle.setAttribute("fill-opacity", "0.2");
-    circle.setAttribute("stroke", candiColorType);
-    circle.setAttribute("stroke-width", "4");
-    circle.setAttribute("pointer-events", "all");
-    circle.style.pointerEvents = "auto";
-    candiBox.appendChild(circle);
-  }
+  const inner = document.createElementNS(CANDI_SVG_NS, "g");
+  inner.setAttribute("class", "candi-inner");
+  candiBox.appendChild(inner);
+  drawCandiShape(inner, unitSize * CANDI_SIZE_RATIO);
 
   candiBoxList.push(candiBox);
   candiBox.addEventListener("click", function () {
@@ -434,17 +424,73 @@ function createCandiBox(i, x, y) {
   });
 
   svg.appendChild(candiBox);
+  return { box: candiBox, inner, cx: center.x, cy: center.y };
 }
 
 /**
- * 후보 이동 위치 배열을 받아 판 위에 마커를 일괄 렌더링합니다.
+ * 후보지들을 가까운 거리부터 나타나게 합니다.
+ * 각 후보지는 착수 위치에서 기물 쪽으로 반 칸 떨어진 곳에서 착수 위치로 다가오며, 작게 시작해 기본 크기가 된다.
+ * 거리 순위마다 조금씩 늦게 시작하지만 앞의 것이 끝나기를 기다리지 않는다 (겹쳐서 나타난다).
+ * @param {number} i - 선택된 기물 ID
+ * @param {Array<{inner: SVGGElement, cx: number, cy: number}>} items
+ */
+function animateCandiMarkers(i, items) {
+  if (!items.length) return;
+  const from = getAxis(pieces[i].x, pieces[i].y);
+  const half = unitSize / 2;
+  const dists = items.map(it => Math.hypot(it.cx - from.x, it.cy - from.y));
+  // 거리가 같은 후보지는 같이 나타난다
+  const ranks = [...new Set(dists.map(d => Math.round(d)))].sort((a, b) => a - b);
+  const anims = items.map((it, k) => {
+    const d = dists[k] || 1;
+    return {
+      inner: it.inner,
+      dx: -((it.cx - from.x) / d) * half, // 착수 위치에서 기물 쪽으로 반 칸
+      dy: -((it.cy - from.y) / d) * half,
+      delay: ranks.indexOf(Math.round(dists[k])) * CANDI_STAGGER_MS
+    };
+  });
+  const setAt = (a, t) => {
+    const e = 1 - Math.pow(1 - t, 3); // 감속
+    const s = CANDI_START_SCALE + (1 - CANDI_START_SCALE) * e;
+    a.inner.setAttribute("transform", `translate(${a.dx * (1 - e)}, ${a.dy * (1 - e)}) scale(${s})`);
+    a.inner.setAttribute("opacity", String(Math.min(1, t * 1.6)));
+  };
+  // 설정에서 애니메이션 시간을 0으로 두었으면 바로 보인다
+  if (typeof animDuration !== "undefined" && animDuration <= 0) {
+    anims.forEach(a => setAt(a, 1));
+    return;
+  }
+  anims.forEach(a => setAt(a, 0));
+  const start = performance.now();
+  const total = CANDI_ANIM_MS + Math.max(...anims.map(a => a.delay));
+  const frame = now => {
+    let running = false;
+    anims.forEach(a => {
+      if (!a.inner.isConnected) return;
+      const t = Math.min(1, Math.max(0, (now - start - a.delay) / CANDI_ANIM_MS));
+      setAt(a, t);
+      if (t < 1) running = true;
+    });
+    if (running) requestAnimationFrame(frame);
+  };
+  requestAnimationFrame(frame);
+  // 화면이 그려지지 않는 탭(배경)에서도 결국 제자리에 보이도록
+  setTimeout(() => anims.forEach(a => a.inner.isConnected && setAt(a, 1)), total + 120);
+}
+
+/**
+ * 후보 이동 위치 배열을 받아 판 위에 마커를 그리고, 가까운 거리부터 나타나게 합니다.
  * @param {number} i - 선택된 기물 ID
  * @param {Array<{x: number, y: number}>} moves - 이동 가능한 좌표 배열
  */
 function renderCandidateMarkers(i, moves) {
+  const items = [];
   for (const m of moves) {
-    createCandiBox(i, m.x, m.y);
+    const it = createCandiBox(i, m.x, m.y);
+    if (it) items.push(it);
   }
+  animateCandiMarkers(i, items);
 }
 
 /**

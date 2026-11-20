@@ -1,19 +1,17 @@
 /**
- * @fileoverview 점수판(Scoreboard) 순환, 대국 타이머, 수순 코멘트 말풍선, 자동 재생(Autoplay), 토스트 알림 모듈.
+ * @fileoverview 대국 타이머, 대국 정보 표시, 수순 코멘트 말풍선, 자동 재생(Autoplay), 토스트 알림 모듈.
  * @module ui
  * @depends state, rules, board, ai, settings
  */
 
-var scoreRotationInterval = null;
-var scoreboardTimerInterval = null;
-var currentScoreSlideIndex = 0;
+var gameTimerInterval = null;
 var toastHideTimeout = null;
 
 /**
  * 화면 상단에 1초간 토스트 알림 메시지를 표시합니다.
  * @param {string} message - 표시할 메시지
  */
-function showToast(message) {
+function showToast(message, durationMs) {
   let toast = document.getElementById("janggi-toast");
   if (!toast) {
     toast = document.createElement("div");
@@ -30,160 +28,45 @@ function showToast(message) {
   }
   toastHideTimeout = setTimeout(() => {
     toast.classList.remove("visible");
-  }, 1000);
+  }, durationMs || 1000);
 }
 
 /**
- * 점수판 슬라이드 순환 및 대국 타이머를 초기화합니다.
+ * 대국 타이머를 0부터 다시 잽니다 (새 대국). 타이머가 돌고 있지 않으면 시작합니다.
  */
-function initScoreboardRotation() {
-  applyScoreboardConfig();
-  
-  if (scoreboardTimerInterval) clearInterval(scoreboardTimerInterval);
-  scoreboardTimerInterval = setInterval(() => {
-    updateScoreboardTimer();
-  }, 1000);
-  
+function initGameTimer() {
   choTimeSpent = 0;
   hanTimeSpent = 0;
+  ensureGameTimer();
+  if (typeof hgUpdateTime === "function") hgUpdateTime();
 }
 
 /**
- * 활성화된 점수판 슬라이드 인덱스 목록(0~2)을 반환합니다.
- * @returns {number[]} 활성 슬라이드 번호 배열
+ * 대국 타이머가 돌고 있지 않으면 시작합니다 (설정 불러오기 등에서 쓴 시간을 지우지 않음).
  */
-function getActiveSlides() {
-  const active = [];
-  if (scoreShowSlide1) active.push(0);
-  if (scoreShowSlide2) active.push(1);
-  if (scoreShowSlide3) active.push(2);
-  if (active.length === 0) active.push(0);
-  return active;
+function ensureGameTimer() {
+  if (gameTimerInterval) return;
+  gameTimerInterval = setInterval(tickGameTimer, 1000);
 }
 
 /**
- * 점수판 슬라이드 표시 여부 및 자동 순환 타이머 설정을 반영합니다.
+ * 매초 현재 턴 진영의 누적 대국 시간을 늘리고 헤더 시간 그래프를 갱신합니다.
  */
-function applyScoreboardConfig() {
-  const activeSlides = getActiveSlides();
-  
-  const dots = document.querySelectorAll(".score-dot");
-  if (dots.length === 3) {
-    dots[0].style.display = scoreShowSlide1 ? "inline-block" : "none";
-    dots[1].style.display = scoreShowSlide2 ? "inline-block" : "none";
-    dots[2].style.display = scoreShowSlide3 ? "inline-block" : "none";
-  }
-  
-  if (!activeSlides.includes(currentScoreSlideIndex)) {
-    setScoreSlide(activeSlides[0]);
-  } else {
-    setScoreSlide(currentScoreSlideIndex);
-  }
-}
-
-/**
- * 점수판을 다음 활성 슬라이드로 전환합니다.
- */
-function rotateScorePanel() {
-  const activeSlides = getActiveSlides();
-  if (activeSlides.length <= 1) {
-    if (activeSlides.length === 1) {
-      setScoreSlide(activeSlides[0]);
-    }
-    return;
-  }
-  const currIdxInActive = activeSlides.indexOf(currentScoreSlideIndex);
-  const nextIdxInActive = (currIdxInActive + 1) % activeSlides.length;
-  setScoreSlide(activeSlides[nextIdxInActive]);
-}
-
-/**
- * 지정한 인덱스의 점수판 슬라이드를 표시합니다.
- * @param {number} index - 슬라이드 인덱스 (0, 1, 2)
- */
-function setScoreSlide(index) {
-  currentScoreSlideIndex = index;
-  const slides = document.querySelectorAll(".score-slide");
-  const dots = document.querySelectorAll(".score-dot");
-  
-  slides.forEach((slide, i) => {
-    if (i === index) {
-      slide.classList.add("active");
-    } else {
-      slide.classList.remove("active");
-    }
-  });
-  
-  dots.forEach((dot, i) => {
-    if (i === index) {
-      dot.classList.add("active");
-    } else {
-      dot.classList.remove("active");
-    }
-  });
-  
-  const activeSlides = getActiveSlides();
-  if (scoreRotationInterval) clearInterval(scoreRotationInterval);
-  if (scoreAutoRotate && activeSlides.length > 1) {
-    scoreRotationInterval = setInterval(() => {
-      rotateScorePanel();
-    }, scoreRotateInterval * 1000);
-  }
-}
-
-/**
- * 설정창의 점수판 순환 옵션을 읽어 적용하고 저장합니다.
- */
-function updateScoreboardSettings() {
-  const autoRotateEl = document.getElementById("score-auto-rotate");
-  const rotateIntervalEl = document.getElementById("score-rotate-interval");
-  const showSlide1El = document.getElementById("score-show-slide1");
-  const showSlide2El = document.getElementById("score-show-slide2");
-  const showSlide3El = document.getElementById("score-show-slide3");
-  
-  if (autoRotateEl) scoreAutoRotate = (autoRotateEl.value === "true");
-  if (rotateIntervalEl) scoreRotateInterval = parseInt(rotateIntervalEl.value, 10);
-  if (showSlide1El) scoreShowSlide1 = showSlide1El.checked;
-  if (showSlide2El) scoreShowSlide2 = showSlide2El.checked;
-  if (showSlide3El) scoreShowSlide3 = showSlide3El.checked;
-  
-  applyScoreboardConfig();
-  saveCurrentConfigToSlot();
-}
-
-/**
- * 매초 현재 턴 진영의 누적 대국 시간을 갱신하고 UI에 표시합니다.
- */
-function updateScoreboardTimer() {
+function tickGameTimer() {
   if (gameEnded) return;
-  
+
   const turnInput = document.getElementById("turn");
   if (!turnInput) return;
   const curTurn = parseInt(turnInput.value, 10);
   const isChoTurn = (curTurn % 2 === 0);
-  
+
   if (isChoTurn) {
     choTimeSpent++;
   } else {
     hanTimeSpent++;
   }
-  
-  const formatTime = (totalSeconds) => {
-    const m = Math.floor(totalSeconds / 60).toString().padStart(2, "0");
-    const s = (totalSeconds % 60).toString().padStart(2, "0");
-    return `${m}:${s}`;
-  };
-  
-  const choTimerVal = document.getElementById("cho-timer-val");
-  const hanTimerVal = document.getElementById("han-timer-val");
-  if (choTimerVal) choTimerVal.textContent = formatTime(choTimeSpent);
-  if (hanTimerVal) hanTimerVal.textContent = formatTime(hanTimeSpent);
-  
-  const activeTurnDesc = document.getElementById("active-turn-timer-desc");
-  if (activeTurnDesc) {
-    activeTurnDesc.textContent = isChoTurn ? "초나라 (Blue) 차례" : "한나라 (Red) 차례";
-    activeTurnDesc.style.color = isChoTurn ? "#60a5fa" : "#f87171";
-  }
+
+  if (typeof hgUpdateTime === "function") hgUpdateTime();
 }
 
 /**
@@ -227,22 +110,16 @@ function updateMetadataFormFromState() {
 }
 
 /**
- * 점수판 슬라이드 2의 대국자 및 대회명 표시 텍스트를 갱신합니다.
+ * 헤더의 진영 이름(대국자 이름, 없으면 초나라·한나라)과 왼쪽 서랍의 대회명 줄을 갱신합니다.
  */
 function updateMetadataDisplay() {
   const tourDisp = document.getElementById("meta-tournament-display");
-  const choDisp = document.getElementById("meta-cho-player-display");
-  const hanDisp = document.getElementById("meta-han-player-display");
-  
   if (tourDisp) {
-    tourDisp.textContent = gameMetadata.tournament || (gameMetadata.nickname ? gameMetadata.nickname : "대회명 미지정");
+    const parts = [gameMetadata.tournament, gameMetadata.round].filter(Boolean);
+    tourDisp.textContent = parts.join(" · ");
+    tourDisp.hidden = parts.length === 0;
   }
-  if (choDisp) {
-    choDisp.textContent = gameMetadata.choPlayer || "초나라";
-  }
-  if (hanDisp) {
-    hanDisp.textContent = gameMetadata.hanPlayer || "한나라";
-  }
+  if (typeof hgUpdateNames === "function") hgUpdateNames();
 }
 
 /**
@@ -358,12 +235,7 @@ function toggleMetadataCategory(event) {
 function toggleSettingCategory(categoryId) {
   const category = document.getElementById(categoryId);
   const content = document.getElementById(categoryId + "-content");
-  let arrowId = "";
-  if (categoryId === "board-view-category") arrowId = "board-view-arrow";
-  else if (categoryId === "anim-category") arrowId = "anim-arrow";
-  else if (categoryId === "settings-category") arrowId = "settings-arrow";
-  
-  const arrow = document.getElementById(arrowId);
+  const arrow = category ? category.querySelector(".accordion-arrow") : null;
   
   if (!category || !content) return;
   
@@ -448,22 +320,11 @@ function stopAutoplay() {
 function updateAutoplayUI() {
   const playBtn = document.getElementById("nav-play-btn");
   if (playBtn) {
-    if (isAutoplayActive) {
-      playBtn.innerHTML = `
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-          <rect x="6" y="4" width="4" height="16" rx="1"/>
-          <rect x="14" y="4" width="4" height="16" rx="1"/>
-        </svg>
-      `;
-      playBtn.title = "자동 재생 일시정지 (P)";
-    } else {
-      playBtn.innerHTML = `
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-          <polygon points="6,4 20,12 6,20"/>
-        </svg>
-      `;
-      playBtn.title = "자동 재생 시작 (P)";
-    }
+    // 선형 아이콘 (index.html의 i-play / i-stop, WebApp Common GUI)
+    const icon = isAutoplayActive ? "i-stop" : "i-play";
+    playBtn.innerHTML = `<svg class="ico" aria-hidden="true"><use href="#${icon}"/></svg>`;
+    playBtn.title = isAutoplayActive ? "자동 재생 정지 (P)" : "자동 재생 시작 (P)";
+    playBtn.setAttribute("aria-label", isAutoplayActive ? "자동 재생 정지" : "자동 재생 시작");
   }
 }
 

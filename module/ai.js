@@ -10,6 +10,21 @@ var aiThinking = false;
  * AI의 차례인지 확인하고 필요 시 AI 착수를 비동기로 실행합니다.
  * @param {boolean} [immediate=false] - 딜레이 없이 즉시 실행 여부
  */
+/**
+ * AI가 두는 진영. 기본은 아래쪽 사람(iAmCho)의 반대편(위쪽).
+ * 헤더 진영 이름 우클릭 메뉴(header-graph.js)로 다른 쪽을 AI로 고르면 aiSidePref에 남는다 (진영 바꾸기를 하면 기본으로).
+ */
+var aiSidePref = null; // "cho" | "han" | null
+
+function aiPlaysSide() {
+  return aiSidePref || (iAmCho ? "han" : "cho");
+}
+
+/** AI 대국 중이고 team이 AI 진영인지 */
+function isAITeam(team) {
+  return aiMode === 1 && aiPlaysSide() === team;
+}
+
 function checkAndRunAI(immediate = false) {
   if (aiMode === 0) return;
   if (aiThinking) return;
@@ -30,24 +45,28 @@ function checkAndRunAI(immediate = false) {
   }
   
   const isChoTurn = (curTurn % 2 === 0);
-  const aiIsCho = (aiMode === 1 && !iAmCho);
-  const aiIsHan = (aiMode === 1 && iAmCho);
+  const aiIsCho = isAITeam("cho");
+  const aiIsHan = isAITeam("han");
   
   if ((isChoTurn && aiIsCho) || (!isChoTurn && aiIsHan)) {
     aiThinking = true;
     
-    const delay = immediate ? 0 : 500;
+    // Fairy-Stockfish는 스스로 생각 시간을 쓰므로 연출용 기다림을 줄인다
+    const useFsf = typeof aiEnginePref === "function" && aiEnginePref() === "fsf" && fsfStatus().state === "ready";
+    const delay = immediate ? 0 : (useFsf ? 100 : 500);
     
     // 약간의 딜레이를 주어 AI가 생각하는 척하는 자연스러운 연출 적용
-    setTimeout(() => {
+    setTimeout(async () => {
       try {
         const aiTeam = isChoTurn ? "cho" : "han";
-        const bestMove = getBestAIMove(aiTeam);
+        // Fairy-Stockfish를 쓸 수 있으면 그것을, 아니면 내장 2수 읽기 (engine-fsf.js)
+        const startTurn = turn.value;
+        const bestMove = (typeof requestAIMove === "function") ? await requestAIMove(aiTeam) : getBestAIMove(aiTeam);
         
-        if (bestMove) {
+        if (bestMove && turn.value === startTurn && !gameEnded) {
           move(bestMove.i, bestMove.x, bestMove.y);
-        } else {
-          console.warn("[AI Move] No legal moves found for AI.");
+        } else if (!bestMove) {
+          console.warn("[AI Move] No legal moves found for AI (or position changed while thinking).");
         }
       } catch (err) {
         console.error("[AI Error] Error during AI move calculation:", err);
@@ -144,9 +163,20 @@ function checkGameStatus() {
   if (validMoves.length === 0) {
     if (inCheck) {
       gameEnded = true;
-      const winner = isChoTurn ? "한나라 (Red)" : "초나라 (Blue)";
+      const winner = isChoTurn ? "한나라" : "초나라";
+      const steps = curTurn;
       setTimeout(() => {
-        alert(`외통수! ${winner}가 승리하였습니다!`);
+        // 닫을 때까지 남는 팝업 (app-dialog.js). 없으면 예전처럼 alert
+        if (typeof showAppDialog === "function") {
+          showAppDialog({
+            title: "외통수!",
+            message: `${winner}가 ${steps}수 만에 외통으로 이겼습니다.`,
+            tone: "win",
+            buttons: [{ label: "닫기", value: null, primary: true }]
+          });
+        } else {
+          alert(`외통수! ${winner}가 승리하였습니다!`);
+        }
       }, 100);
     }
   }
@@ -290,7 +320,8 @@ function getBestAIMove(aiTeam) {
   
   if (bestMoves.length === 0) return null;
   const randomIndex = Math.floor(Math.random() * bestMoves.length);
-  return bestMoves[randomIndex];
+  // score: 이 수를 둔 뒤 상대 최선 응수까지 본 평가 점수 (LLM 해설의 근거 자료로 사용)
+  return { ...bestMoves[randomIndex], score: bestScore };
 }
 
 /**
@@ -362,11 +393,13 @@ function requestAIHint() {
   }
   
   const myTeam = iAmCho ? "cho" : "han";
-  const bestMove = getBestAIMove(myTeam);
-  if (bestMove) {
-    showToast("AI 훈수 착수!");
-    move(bestMove.i, bestMove.x, bestMove.y);
-  } else {
-    showToast("추천할 수 있는 합법적인 수가 없습니다.");
-  }
+  const pick = (typeof requestAIMove === "function") ? requestAIMove(myTeam) : Promise.resolve(getBestAIMove(myTeam));
+  pick.then(bestMove => {
+    if (bestMove && turnEl.value === String(curTurn)) {
+      showToast("AI 훈수 착수!");
+      move(bestMove.i, bestMove.x, bestMove.y);
+    } else if (!bestMove) {
+      showToast("추천할 수 있는 합법적인 수가 없습니다.");
+    }
+  });
 }

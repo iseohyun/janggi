@@ -1,0 +1,213 @@
+/**
+ * @fileoverview AI 해설 영역(오른쪽 서랍 #ai-comment-section) 스타일.
+ * 버튼 뼈대(.modal-btn)는 modal.css를 따르고, 여기에는 해설 전용 요소만 둔다.
+ */
+
+#ai-comment-section .ai-comment-body {
+  text-align: left;
+}
+
+#ai-comment-section .modal-btn.save {
+  background: #3b82f6;
+  color: #ffffff;
+}
+
+#ai-comment-section .modal-btn.save:hover:not(:disabled) {
+  background: #2563eb;
+  box-shadow: 0 0 12px rgba(59, 130, 246, 0.4);
+}
+
+#ai-comment-section .modal-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+#ai-comment-section .ai-comment-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+#ai-comment-section .ai-comment-footer:not(:has(button:not([style*="display: none"]))) {
+  margin-top: 0;
+}
+
+.ai-comment-step-label {
+  margin-left: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #94a3b8;
+  text-shadow: none;
+}
+
+.ai-comment-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.ai-comment-actions .modal-btn {
+  flex: 1 1 140px;
+}
+
+.ai-comment-question-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.ai-comment-question-input {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  background: rgba(15, 23, 42, 0.6);
+  color: #f8fafc;
+  font-size: 13px;
+}
+
+.ai-comment-question-input:focus {
+  outline: none;
+  border-color: #3b82f6;
+}
+
+.ai-comment-run-status {
+  min-height: 18px;
+  font-size: 12px;
+  color: #93c5fd;
+  margin-bottom: 6px;
+}
+
+.ai-comment-progress {
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(148, 163, 184, 0.2);
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.ai-comment-progress-fill {
+  height: 100%;
+  width: 0;
+  background: #3b82f6;
+  transition: width 0.2s;
+}
+
+.ai-comment-output {
+  min-height: 90px;
+  max-height: 32vh;
+  overflow-y: auto;
+  padding: 12px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 14px;
+  line-height: 1.65;
+  white-space: pre-wrap;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+.ai-comment-output:empty::before {
+  content: "위 버튼을 눌러 해설을 받아 보세요.";
+  color: #64748b;
+}
+
+.ai-comment-note {
+  margin: 6px 0 12px;
+  font-size: 11px;
+  color: #94a3b8;
+}
+
+.ai-comment-settings {
+  border-top: 1px solid rgba(148, 163, 184, 0.15);
+  padding-top: 10px;
+}
+
+.ai-comment-settings summary {
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+  color: #cbd5e1;
+}
+
+.ai-comment-settings-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.ai-comment-setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 13px;
+}
+
+.ai-comment-setting-row select,
+.ai-comment-port-input {
+  max-width: 60%;
+  padding: 4px 6px;
+  border-radius: 6px;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  background: rgba(15, 23, 42, 0.8);
+  color: #f8fafc;
+}
+
+.ai-comment-port-input {
+  width: 90px;
+}
+
+.ai-comment-provider-status {
+  font-size: 12px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: rgba(148, 163, 184, 0.08);
+  color: #cbd5e1;
+}
+
+.ai-comment-provider-status[data-state="ready"] {
+  color: #86efac;
+}
+
+.ai-comment-provider-status[data-state="download"] {
+  color: #fde68a;
+}
+
+.ai-comment-provider-status[data-state="unavailable"] {
+  color: #fca5a5;
+}
+
+.ai-comment-mcp-help {
+  font-size: 12px;
+  line-height: 1.6;
+  color: #cbd5e1;
+}
+
+.ai-comment-mcp-help p {
+  margin: 0 0 8px;
+}
+
+.ai-comment-mcp-help code {
+  background: rgba(148, 163, 184, 0.15);
+  padding: 1px 4px;
+  border-radius: 4px;
+}
+
+@media (max-width: 480px) {
+  .ai-comment-setting-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .ai-comment-setting-row select,
+  .ai-comment-port-input {
+    max-width: none;
+    width: 100%;
+  }
+}

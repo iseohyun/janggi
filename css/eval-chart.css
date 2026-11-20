@@ -1,0 +1,215 @@
+/**
+ * @fileoverview 형세 흐름 그래프 창 (module/eval-history.js): 헤더 형세 줄을 누르면 화면 가운데에 뜬다.
+ */
+
+.eval-chart-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 950;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(2, 6, 23, 0.45);
+  backdrop-filter: blur(2px);
+}
+
+.eval-chart-modal[hidden] {
+  display: none;
+}
+
+.eval-chart-box {
+  width: min(720px, 100%);
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 16px 12px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border-light);
+  background: rgba(15, 23, 42, 0.97);
+  color: var(--color-text-primary);
+  box-shadow: 0 24px 60px rgba(2, 6, 23, 0.5);
+  box-sizing: border-box;
+}
+
+.eval-chart-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.eval-chart-title {
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.eval-chart-title small {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.eval-chart-close {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.eval-chart-close:hover {
+  color: var(--color-text-primary);
+  background: var(--color-bg-hover);
+}
+
+.eval-chart-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.eval-chart-cho-zone {
+  fill: rgba(59, 130, 246, 0.1);
+}
+
+.eval-chart-han-zone {
+  fill: rgba(239, 68, 68, 0.1);
+}
+
+.eval-chart-grid {
+  stroke: rgba(148, 163, 184, 0.18);
+  stroke-width: 1;
+}
+
+.eval-chart-mid {
+  stroke: rgba(226, 232, 240, 0.55);
+  stroke-width: 1;
+  stroke-dasharray: 4 4;
+}
+
+.eval-chart-ylabel,
+.eval-chart-xlabel {
+  fill: #94a3b8;
+  font-size: 10px;
+}
+
+.eval-chart-ylabel {
+  text-anchor: end;
+  dominant-baseline: central;
+}
+
+.eval-chart-xlabel {
+  text-anchor: middle;
+}
+
+/* 선·점 색은 eval-history.js가 정한다 (본선 흰색, 가지 초록, 표시된 수 빨강·노랑: 변화도와 같다) */
+.eval-chart-line {
+  fill: none;
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.eval-chart-dot {
+  stroke: #0f172a;
+  stroke-width: 1;
+  cursor: pointer;
+}
+
+.eval-chart-dot:hover {
+  stroke: #ffffff;
+  stroke-width: 2;
+}
+
+.eval-chart-dot.current {
+  stroke: #fbbf24;
+  stroke-width: 2.5;
+}
+
+/* 지금 보고 있는 수 */
+.eval-chart-cursor {
+  stroke: rgba(251, 191, 36, 0.6);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+}
+
+/* 아직 계산되지 않은 국면: 가운데 줄 위 흐린 점 */
+.eval-chart-pending {
+  fill: rgba(148, 163, 184, 0.35);
+}
+
+.eval-chart-foot {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
+/* 헤더 그래프 3줄: 어디를 눌러도 형세 흐름 그래프 */
+#hdr-graph {
+  cursor: pointer;
+}
+
+#hdr-graph .hg-row {
+  cursor: pointer;
+}
+
+#hdr-graph:focus-visible {
+  outline: 2px solid #fbbf24;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* 전체 화면 버튼 */
+.eval-chart-full-btn {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.eval-chart-full-btn:hover {
+  color: var(--color-text-primary);
+  background: var(--color-bg-hover);
+}
+
+.eval-chart-full-btn + .eval-chart-close {
+  margin-left: 0;
+}
+
+/* 전체 화면: 브라우저 창 전체를 그래프로 */
+.eval-chart-modal.full {
+  padding: 0;
+}
+
+.eval-chart-modal.full .eval-chart-box {
+  width: 100%;
+  height: 100%;
+  border-radius: 0;
+}
+
+.eval-chart-modal.full .eval-chart-plot {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.eval-chart-modal.full .eval-chart-svg {
+  height: 100%;
+}

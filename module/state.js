@@ -97,8 +97,27 @@ const DEFAULT_SHORTCUT_KEYS = {
     primary: { key: "z", ctrl: false, alt: false, shift: false },
     secondary: null
   },
+  // AI 훈수 한 수 받기: X는 헤더 "AI 훈수 보이기"(toggleRecommend)로 옮겼다. 필요하면 단축키 설정에서 지정
   requestAIHint: {
+    primary: null,
+    secondary: null
+  },
+  toggleExplore: {
+    primary: { key: "i", ctrl: false, alt: false, shift: false },
+    secondary: null
+  },
+  toggleRecommend: {
     primary: { key: "x", ctrl: false, alt: false, shift: false },
+    secondary: null
+  },
+  // 추천수 1~5 고르기 (recommend.js playRecommendationByKey)
+  recommend1: { primary: { key: "1", ctrl: false, alt: false, shift: false }, secondary: null },
+  recommend2: { primary: { key: "2", ctrl: false, alt: false, shift: false }, secondary: null },
+  recommend3: { primary: { key: "3", ctrl: false, alt: false, shift: false }, secondary: null },
+  recommend4: { primary: { key: "4", ctrl: false, alt: false, shift: false }, secondary: null },
+  recommend5: { primary: { key: "5", ctrl: false, alt: false, shift: false }, secondary: null },
+  openAICommentary: {
+    primary: { key: "c", ctrl: false, alt: false, shift: false },
     secondary: null
   },
   flipHorizontal: {
@@ -205,26 +224,21 @@ var boardColorType = "wood";
 var choColorType = "blue";
 var hanColorType = "red";
 var pieceShapeType = "octagon";
-var candiShapeType = "empty_circle";
-var candiColorType = "#3b82f6";
-var aiMode = 0; // AI 모드: 0=사용 안함 (로컬 2인용), 1=사용함 (AI가 항상 위쪽에서 플레이)
+var candiShapeType = "corner_square"; // 후보지 모양 (기본: 모서리만 그린 사각형)
+var candiColorType = "#a5484a"; // 후보지 색 (기본: 탁한 붉은색)
+var aiMode = 1; // AI 모드: 0=사용 안함 (로컬 2인용), 1=사용함 (AI가 항상 위쪽에서 플레이, 기본값)
 var cursorLockMode = false; // 키보드 커서락 모드 여부
 var gameEnded = false; // 외통수 등으로 대국이 종료되었는지 여부
 
 // 설정창 비주얼 상태값
 var settingsBgColor = "#0f172a";
-var settingsOpacity = 0.55;
+var settingsOpacity = 0.94;
 var settingsTextColorType = "auto";
 var settingsTextColorCustom = "#f8fafc";
 var settingsAccentColor = "#3b82f6";
 
-// 점수판/자동재생/모달/코멘트 설정값
+// 자동재생/모달/코멘트 설정값
 var currentLoadedRecordId = null; // 현재 불러와서 보여주고 있는 기보의 로컬스토리지 ID
-var scoreAutoRotate = true; // 점수판 자동 순환 여부
-var scoreRotateInterval = 5; // 점수판 순환 주기 (초)
-var scoreShowSlide1 = true; // 점수판 슬라이드 1 (점수차) 표출 여부
-var scoreShowSlide2 = true; // 점수판 슬라이드 2 (타이머) 표출 여부
-var scoreShowSlide3 = true; // 점수판 슬라이드 3 (대회정보) 표출 여부
 var autoplaySpeed = 2; // 자동재생 속도 (초)
 var autoplayUseAnim = true; // 자동재생 시 애니메이션 사용 여부
 var shortcutModalBgColor = "#5f80ce"; // 단축키 모달 배경색

@@ -173,29 +173,17 @@ function generateGameRecordText() {
  * 기보 관리 패널을 엽니다.
  */
 function openRecordModal() {
-  const recordBox = document.getElementById("record-box");
-  if (recordBox) {
-    recordBox.style.display = "flex";
-    
-    const article = document.getElementById("janggi-app");
-    if (article) article.classList.add("record-open");
-    
-    updateRecordUI();
-    updateSavedRecordsListUI();
-  }
+  // 2026-11-20: 기보 관리는 기보보기 패널(preview.js)에 합쳐졌다
+  if (typeof openRecordView === "function") openRecordView();
+  updateRecordUI();
+  updateSavedRecordsListUI();
 }
 
 /**
- * 기보 관리 패널을 닫습니다.
+ * 기보 관리(기보보기 패널)를 닫습니다.
  */
 function closeRecordModal() {
-  const recordBox = document.getElementById("record-box");
-  if (recordBox) {
-    recordBox.style.display = "none";
-    
-    const article = document.getElementById("janggi-app");
-    if (article) article.classList.remove("record-open");
-  }
+  if (typeof closeRecordView === "function") closeRecordView();
 }
 
 /**
@@ -206,7 +194,7 @@ function loadRecordFromClipboard() {
     navigator.clipboard.readText().then(text => {
       if (text && text.trim()) {
         importRecordFromText(text);
-        currentLoadedRecordId = null;
+        addImportedRecordToLibrary(text);
         updateSavedRecordsListUI();
         showToast("기보를 복원하였습니다.");
       } else {
@@ -228,10 +216,34 @@ function fallbackPromptLoad() {
   const text = prompt("클립보드에서 가져오지 못했습니다. 복사한 기보 텍스트를 여기에 붙여넣어 주세요:");
   if (text && text.trim()) {
     importRecordFromText(text);
-    currentLoadedRecordId = null;
+    addImportedRecordToLibrary(text);
     updateSavedRecordsListUI();
     showToast("기보를 복원하였습니다.");
   }
+}
+
+/**
+ * 불러온 기보를 "내 기보"(보관함) 맨 위에 넣습니다. 같은 글의 기보가 이미 있으면 그것을 가리키기만 한다.
+ * 이름은 기보 정보의 별명 → 대회명·대국정보 → "불러온 기보_N수" 순서로 정한다.
+ * @param {string} text - 불러온 기보 글
+ */
+function addImportedRecordToLibrary(text) {
+  const saved = getSavedRecords();
+  const trimmed = text.trim();
+  const twin = saved.find(r => (r.text || "").trim() === trimmed);
+  if (twin) {
+    currentLoadedRecordId = twin.id;
+    return;
+  }
+  const meta = typeof gameMetadata !== "undefined" && gameMetadata ? gameMetadata : {};
+  const titled = [meta.tournament, meta.round].filter(Boolean).join(" ");
+  const name = meta.nickname || titled || `불러온 기보_${log.length}수`;
+  const now = new Date();
+  const date = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")} ${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+  const rec = { id: Date.now(), name, date, text: trimmed, imported: true };
+  saved.unshift(rec);
+  setSavedRecords(saved);
+  currentLoadedRecordId = rec.id;
 }
 
 /**
@@ -335,6 +347,8 @@ function updateSavedRecordsListUI() {
   
   container.innerHTML = "";
   const saved = getSavedRecords();
+  // 내 기보 묶음: 기보가 없으면 묶음째 숨기고, 있으면 개수를 적는다 (famous-games.js)
+  if (typeof syncRecordGroups === "function") syncRecordGroups(saved.length);
   
   if (saved.length === 0) {
     const emptyEl = document.createElement("div");

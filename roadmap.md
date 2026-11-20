@@ -10,6 +10,10 @@
 ## 완료된 과제
 
 - [v2.0.0] ES Module 아키텍처 전환 및 전면 리팩터링 (아래 상세 기술)
+- [2026-11-19] LLM 해설 기능 (방금 둔 수 해설 · 전체 기보 복기 · 자유 질문 · 코멘트/총평 저장)
+  - 엔진(2수 읽기)이 계산한 사실을 LLM에 건네고, LLM은 설명만 맡는 구조 (`module/commentary-facts.js`)
+  - 공급자 교체형 구조 (`module/commentary-providers.js`): 브라우저 내장 AI(Chrome Prompt API), 웹 내장 AI(WebLLM), 구독 중인 AI(MCP 도우미 `tools/janggi-mcp-bridge`)
+  - 남은 일: 유료 중계 서버 공급자 → Milestone 3(서버 연동)과 함께 진행
 
 ## 🎯 마일스톤 구성
 

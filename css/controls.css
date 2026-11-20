@@ -1,74 +1,57 @@
 /**
- * @fileoverview 상단 컨트롤 바(#control-box), 수순 탐색 버튼(.nav-btn), 턴 표시기(#turn) 스타일.
+ * @fileoverview 대국 헤더(#game-header): [왼쪽 서랍 버튼] [N수] [초 이름] [그래프 3줄] [한 이름] [오른쪽 서랍 버튼].
+ * 그래프 줄 모양은 css/header-graph.css, 서랍·레일은 css/drawer.css.
  */
 
-#control-box {
+#game-header {
   display: flex;
-  flex-direction: column;
-  align-items: stretch;
+  align-items: center;
+  gap: 8px;
   margin-bottom: 8px;
   margin-left: auto;
   margin-right: auto;
+  padding: 0 2px;
   box-sizing: border-box;
+  max-width: 100%;
 }
 
-.control-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  width: 100%;
-  gap: 20px;
-}
-
-.control-group {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-/* Turn Display & Navigation (Borderless/Transparent) */
-.turn-nav-group {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  flex-shrink: 0;
-}
-
-.nav-btn {
-  border: none;
-  background: transparent;
-  padding: 6px;
-  cursor: pointer;
-  color: #475569;
-  display: flex;
+/* 서랍 여는 버튼 (넓은 화면에서는 서랍이 늘 펼쳐져 있어 숨긴다: css/drawer.css) */
+.hdr-drawer-btn {
+  flex: 0 0 auto;
+  width: 40px;
+  height: 40px;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 50%;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-md);
+  background: none;
+  color: #475569;
+  cursor: pointer;
   transition: background-color 0.2s, color 0.2s, transform 0.1s;
 }
 
-.nav-btn:hover {
-  background-color: #e2e8f0;
-  color: #0f172a;
-  transform: scale(1.15);
+.hdr-drawer-btn:hover {
+  background-color: #f1f5f9;
+  color: #1e293b;
 }
 
-.nav-btn:active {
+.hdr-drawer-btn:active {
   transform: scale(0.95);
 }
 
-.nav-btn:disabled {
-  color: #cbd5e1;
-  cursor: not-allowed;
-  pointer-events: none;
-  transform: none !important;
-  background-color: transparent !important;
+.hdr-drawer-btn.active {
+  color: #d97706;
+  background-color: #fef3c7;
 }
 
+/* 수순 번호 */
 .turn-display {
+  flex: 0 0 auto;
   display: inline-flex;
   align-items: baseline;
-  font-size: 2.1rem; /* Extremely large turn count font size */
+  font-size: 1.7rem;
   font-weight: 900;
   color: #0f172a;
   line-height: 1;
@@ -79,7 +62,7 @@
 #turn {
   border: none !important;
   background: transparent !important;
-  width: 50px;
+  width: 2.05em; /* 세 자리 수순(100수 넘김)까지 */
   text-align: right;
   font-size: inherit;
   font-weight: inherit;
@@ -97,33 +80,157 @@
 }
 
 .turn-suffix {
-  font-size: 0.65em;
+  font-size: 0.6em;
   font-weight: 800;
   color: #475569;
   margin-left: 2px;
 }
 
-/* Icon Buttons (Setting, Download) */
-.icon-btn {
-  width: 3.2em;
-  height: 3.2em;
+/* 진영 이름: 기보 정보의 대국자(없으면 초나라·한나라, AI 진영은 AI). 가로쓰기, 아래 줄에 단수·AI (header-graph.js hgUpdateNames) */
+.hdr-side-name {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 6.5em;
   display: inline-flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.15;
+  cursor: context-menu;
+  user-select: none;
+}
+
+.hdr-name-main,
+.hdr-name-sub {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hdr-name-sub {
+  font-size: 10px;
+  font-weight: 700;
+  opacity: 0.8;
+}
+
+.hdr-name-sub[hidden] {
+  display: none;
+}
+
+.hdr-side-name.cho {
+  color: var(--color-cho-blue-dark);
+}
+
+.hdr-side-name.han {
+  color: var(--color-han-red-dark);
+}
+
+/* 지금 둘 차례인 진영: 연한 진영색 바탕 (header-graph.js hgMarkSideToMove) */
+.hdr-side-name {
+  padding: 3px 6px;
+  border-radius: 6px;
+  transition: background-color 0.25s ease;
+}
+
+/* 진영 이름 우클릭 메뉴: 그 진영을 사용자·AI 중에서 고른다 (header-graph.js openSideMenu) */
+.side-menu {
+  position: fixed;
+  z-index: 900;
+  min-width: 132px;
+  padding: 6px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-light);
+  background: rgba(15, 23, 42, 0.96);
+  color: var(--color-text-primary);
+  box-shadow: 0 12px 30px rgba(2, 6, 23, 0.45);
+  font-size: 13px;
+}
+
+.side-menu[hidden] {
+  display: none;
+}
+
+.side-menu-title {
+  padding: 4px 8px 6px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-text-secondary);
+}
+
+.side-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 10px;
   border: none;
+  border-radius: var(--radius-sm);
   background: none;
-  color: #475569;
+  color: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: left;
   cursor: pointer;
-  border-radius: 50%;
-  transition: background-color 0.2s, color 0.2s, transform 0.1s;
 }
 
-.icon-btn:hover {
-  background-color: #f1f5f9;
-  color: #1e293b;
-  transform: scale(1.05);
+.side-menu-item::before {
+  content: "";
+  width: 14px;
+  text-align: center;
 }
 
-.icon-btn:active {
-  transform: scale(0.95);
+.side-menu-item.checked::before {
+  content: "✓";
+  color: #fbbf24;
+}
+
+.side-menu-item:hover,
+.side-menu-item:focus-visible {
+  background: var(--color-bg-hover);
+  outline: none;
+}
+
+.hdr-side-name.cho.to-move {
+  background: #dbeafe;
+}
+
+.hdr-side-name.han.to-move {
+  background: #fee2e2;
+}
+
+/* 처음·이전·다음·마지막 버튼은 기보 서랍으로 옮겼다. 다른 모듈이 #prev/#next 상태를 쓰므로 요소는 숨겨 둔다 */
+#game-header .nav-btn[hidden] {
+  display: none !important;
+}
+
+@media (max-width: 520px) {
+  #game-header {
+    gap: 4px;
+  }
+
+  .hdr-drawer-btn {
+    width: 34px;
+    height: 34px;
+  }
+
+  .turn-display {
+    font-size: 1.3rem;
+  }
+
+  #turn {
+    width: 2.05em;
+  }
+
+  .hdr-side-name {
+    max-width: 4.2em;
+    padding: 2px 3px;
+    font-size: 11px;
+  }
+
+  .hdr-name-sub {
+    font-size: 9px;
+  }
 }

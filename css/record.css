@@ -1,36 +1,6 @@
 /**
- * @fileoverview 기보 관리 패널(#record-box), 기보 보관함 목록(.saved-record-row), 메타데이터 폼 스타일.
+ * @fileoverview 기보 보관함 목록(.saved-record-row), 메타데이터 폼 스타일. 2026-11-20부터 기보보기 패널(#preview-panel) 안에 들어 있다.
  */
-
-#record-box {
-  position: fixed;
-  z-index: 200;
-  top: 0;
-  right: 0;
-  width: 450px;
-  height: 100vh;
-  background: rgba(15, 23, 42, 0.78);
-  backdrop-filter: blur(15px);
-  color: #f8fafc;
-  flex-direction: column;
-  padding: 0;
-  box-sizing: border-box;
-  overflow-y: hidden;
-  border-left: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: -10px 0 30px rgba(0, 0, 0, 0.4);
-  display: none;
-}
-
-@media (max-width: 849px) {
-  #record-box {
-    width: 100vw;
-    height: 100vh;
-    left: 0;
-    right: 0;
-    border-left: none;
-    box-shadow: none;
-  }
-}
 
 .record-header {
   display: flex;

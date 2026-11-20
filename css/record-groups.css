@@ -1,0 +1,66 @@
+/**
+ * @fileoverview 왼쪽 서랍 "저장된 기보" 영역의 묶음(내 기보 / 유명 기보)과 "기보 정보" 영역 본문.
+ * 기보 줄 모양은 css/record.css, 유명 기보 줄은 css/famous-games.css.
+ */
+
+.record-group + .record-group {
+  margin-top: 12px;
+}
+
+.record-group[hidden] {
+  display: none;
+}
+
+.record-group-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 4px 2px 6px;
+  border: none;
+  border-bottom: 1px solid var(--color-border);
+  background: none;
+  color: var(--color-text-primary);
+  font-size: 13px;
+  font-weight: 800;
+  text-align: left;
+  cursor: pointer;
+}
+
+.record-group-count {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-text-secondary);
+}
+
+.record-group-chev {
+  margin-left: auto;
+  color: var(--color-text-secondary);
+  transition: transform var(--transition-fast);
+}
+
+.record-group.collapsed .record-group-chev {
+  transform: rotate(-90deg);
+}
+
+.record-group-body {
+  padding-top: 8px;
+}
+
+.record-group.collapsed .record-group-body {
+  display: none;
+}
+
+/* 내 기보 목록은 서랍 안에서 그대로 늘어놓는다 (높이 제한·자체 스크롤 없음) */
+.record-group .saved-records-list-container {
+  max-height: none;
+  overflow: visible;
+}
+
+/* 기보 정보: 접지 않고 그대로 보인다 */
+#metadata-category .metadata-content {
+  display: block;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}

@@ -1,0 +1,38 @@
+/**
+ * @fileoverview 장기판 우클릭 메뉴 (module/board-menu.js). 바탕 모양은 진영 메뉴 .side-menu (css/controls.css)를 쓴다.
+ */
+
+.board-menu {
+  min-width: 168px;
+}
+
+.board-menu-sep {
+  height: 1px;
+  margin: 4px 6px;
+  background: var(--color-border-light);
+}
+
+.board-menu .side-menu-item:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.board-menu .side-menu-item:disabled:hover {
+  background: none;
+}
+
+.board-menu .board-menu-label {
+  flex: 1 1 auto;
+}
+
+/* 배정된 단축키: 오른쪽 정렬, 흐리게 */
+.board-menu .board-menu-key {
+  flex: 0 0 auto;
+  margin-left: 16px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-weight: 600;
+}

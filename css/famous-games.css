@@ -1,0 +1,140 @@
+/**
+ * @fileoverview 유명 기보 목록 (module/famous-games.js): 왼쪽 서랍 "저장된 기보" 영역 아래.
+ */
+
+.famous-games-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.famous-game-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: rgba(255, 255, 255, 0.04);
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+
+.famous-game-item:hover,
+.famous-game-item:focus-visible {
+  background: var(--color-bg-hover);
+  border-color: rgba(251, 191, 36, 0.55);
+  outline: none;
+}
+
+.famous-game-title {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.famous-game-meta {
+  font-size: 11.5px;
+  color: var(--color-text-secondary);
+}
+
+.famous-game-opening {
+  font-size: 11px;
+  color: var(--color-accent-amber);
+}
+
+.famous-games-empty {
+  padding: 8px 10px;
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+/* 검색·필터 줄 */
+.famous-filter {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.famous-filter[hidden] {
+  display: none;
+}
+
+.famous-filter-row {
+  display: flex;
+  gap: 6px;
+  min-width: 0;
+}
+
+.famous-filter-q,
+.famous-filter-select {
+  box-sizing: border-box;
+  min-width: 0;
+  background: var(--color-bg-input);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-primary);
+  font-size: 12.5px;
+  padding: 6px 8px;
+  outline: none;
+}
+
+.famous-filter-q {
+  width: 100%;
+}
+
+.famous-filter-select {
+  flex: 1 1 0;
+  cursor: pointer;
+}
+
+.famous-filter-select option {
+  background: var(--color-bg-dark);
+  color: var(--color-text-primary);
+}
+
+.famous-filter-q:focus,
+.famous-filter-select:focus {
+  border-color: var(--color-primary);
+}
+
+.famous-filter-foot {
+  align-items: center;
+  justify-content: space-between;
+}
+
+.famous-filter-status {
+  font-size: 11.5px;
+  color: var(--color-text-secondary);
+}
+
+.famous-filter-reset,
+.famous-more {
+  background: none;
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-secondary);
+  font-size: 11.5px;
+  padding: 3px 8px;
+  cursor: pointer;
+}
+
+.famous-filter-reset:hover,
+.famous-more:hover {
+  background: var(--color-bg-hover);
+  color: var(--color-text-primary);
+}
+
+.famous-more {
+  width: 100%;
+  margin-top: 6px;
+  padding: 6px 8px;
+}
+
+.famous-more[hidden] {
+  display: none;
+}

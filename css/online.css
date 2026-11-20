@@ -1,0 +1,619 @@
+/**
+ * 온라인 대국 (module/online/online-ui.js)
+ *  - 왼쪽 서랍 "온라인 대국" 영역(#ol-sec-online): 로그인, 방 만들기·초대, 대국자, AI 도움, 무르기·기권
+ *  - 오른쪽 서랍 "채팅" 영역(#ol-sec-chat): 채팅·시스템 메시지, 무르기 응답
+ *  - 대국 중 형세 그래프를 끄면(html.ol-eval-off) 헤더 형세 줄을 가린다 (online-ai.js)
+ */
+
+.ol-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  font-size: 13px;
+  color: var(--color-text-primary);
+}
+
+.ol-section[hidden],
+.ol-section [hidden] {
+  display: none !important;
+}
+
+.ol-block {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ol-h {
+  margin: 6px 0 0;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: var(--color-text-secondary);
+}
+
+.ol-h small {
+  margin-left: 6px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+}
+
+.ol-hint {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--color-text-secondary);
+}
+
+#ol-room-meta {
+  white-space: pre-line;
+}
+
+.ol-hint-strong {
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  background: rgba(59, 130, 246, 0.14);
+  color: #bfdbfe;
+}
+
+.ol-backend-note {
+  margin: 0;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--color-text-secondary);
+}
+
+.ol-backend-note.fake {
+  background: rgba(245, 158, 11, 0.12);
+  color: #fcd34d;
+}
+
+.ol-backend-note.error {
+  background: rgba(244, 63, 94, 0.14);
+  color: #fda4af;
+}
+
+/* ===== 버튼·입력 ===== */
+.ol-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-input);
+  color: var(--color-text-primary);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+
+.ol-btn:hover:not(:disabled) {
+  background: var(--color-bg-hover);
+}
+
+.ol-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.ol-btn:focus-visible,
+.ol-section input:focus-visible,
+.ol-section select:focus-visible {
+  outline: 2px solid #fbbf24;
+  outline-offset: 1px;
+}
+
+.ol-btn.ol-primary {
+  border-color: transparent;
+  background: var(--color-primary);
+  color: #fff;
+}
+
+.ol-btn.ol-primary:hover:not(:disabled) {
+  background: var(--color-primary-dark);
+}
+
+.ol-btn.ol-danger {
+  color: #fda4af;
+  border-color: rgba(244, 63, 94, 0.4);
+}
+
+.ol-btn.ol-small {
+  min-height: 30px;
+  padding: 0 10px;
+  font-size: 12px;
+}
+
+.ol-btn.ol-google {
+  background: #fff;
+  color: #1f2937;
+  border-color: #fff;
+}
+
+.ol-btn.ol-google:hover:not(:disabled) {
+  background: #e5e7eb;
+}
+
+.ol-g {
+  width: 18px;
+  height: 18px;
+}
+
+.ol-section input[type="text"],
+.ol-section input[type="email"],
+.ol-section input[type="password"],
+.ol-section select {
+  width: 100%;
+  min-height: 36px;
+  box-sizing: border-box;
+  padding: 0 10px;
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-sm);
+  background: rgba(0, 0, 0, 0.25);
+  color: var(--color-text-primary);
+  font: inherit;
+}
+
+.ol-section select option {
+  background: #0f172a;
+}
+
+.ol-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.ol-field > span {
+  font-size: 11.5px;
+  color: var(--color-text-secondary);
+}
+
+.ol-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.ol-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.ol-row > input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.ol-row > .ol-btn {
+  flex: 0 0 auto;
+}
+
+.ol-actions {
+  flex-wrap: wrap;
+}
+
+.ol-actions .ol-btn {
+  flex: 1 1 auto;
+}
+
+.ol-divider {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+
+.ol-divider::before,
+.ol-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--color-border);
+}
+
+/* 이메일 로그인·회원가입·찾기 */
+.ol-seg {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  padding: 3px;
+  border-radius: var(--radius-sm);
+  background: rgba(0, 0, 0, 0.25);
+}
+
+.ol-seg button {
+  min-height: 30px;
+  border: none;
+  border-radius: 4px;
+  background: none;
+  color: var(--color-text-secondary);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.ol-seg button.active {
+  background: var(--color-bg-hover);
+  color: var(--color-text-primary);
+  font-weight: 700;
+}
+
+.ol-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ol-form:not([data-mode="signup"]) .ol-only-signup,
+.ol-form[data-mode="reset"] .ol-no-reset {
+  display: none;
+}
+
+.ol-msg {
+  min-height: 1em;
+  margin: 0;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
+.ol-msg[data-kind="error"] {
+  color: #fda4af;
+}
+
+.ol-msg[data-kind="ok"] {
+  color: #86efac;
+}
+
+/* ===== 로그인한 사람 ===== */
+.ol-me {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.ol-avatar {
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--color-primary);
+  color: #fff;
+  font-weight: 800;
+}
+
+.ol-me-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.ol-me-text b,
+.ol-me-text small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ol-me-text small {
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+
+/* ===== 방 ===== */
+.ol-room-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.ol-room-head code {
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: #fbbf24;
+}
+
+.ol-status {
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--color-text-secondary);
+}
+
+.ol-status[data-status="playing"] {
+  background: rgba(34, 197, 94, 0.16);
+  color: #86efac;
+}
+
+.ol-status[data-status="waiting"] {
+  background: rgba(245, 158, 11, 0.14);
+  color: #fcd34d;
+}
+
+.ol-seats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.ol-seat {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 8px;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.04);
+  border-left: 3px solid var(--color-cho-blue);
+}
+
+.ol-seat.han {
+  border-left-color: var(--color-han-red);
+}
+
+.ol-seat-side {
+  font-weight: 900;
+  color: var(--color-cho-blue);
+}
+
+.ol-seat.han .ol-seat-side {
+  color: var(--color-han-red);
+}
+
+.ol-seat-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ol-seat-name em {
+  color: var(--color-text-muted);
+}
+
+.ol-turn-dot {
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
+  margin-left: auto;
+  border-radius: 50%;
+  background: #22c55e;
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.25);
+}
+
+.ol-invite {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  border-radius: var(--radius-md);
+  border: 1px dashed rgba(251, 191, 36, 0.45);
+  background: rgba(251, 191, 36, 0.06);
+}
+
+.ol-invite .ol-row .ol-btn {
+  flex: 1 1 0;
+}
+
+.ol-ai {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+}
+
+.ol-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 30px;
+  cursor: pointer;
+}
+
+/* ===== 채팅 ===== */
+#ol-sec-chat {
+  min-height: 0;
+}
+
+.ol-undo-ask {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  border-radius: var(--radius-md);
+  background: rgba(245, 158, 11, 0.14);
+  color: #fde68a;
+}
+
+.ol-chat-log {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 160px;
+  max-height: 46vh;
+  overflow-y: auto;
+  padding: 8px;
+  border-radius: var(--radius-md);
+  background: rgba(0, 0, 0, 0.2);
+  overscroll-behavior: contain;
+}
+
+.ol-chat-log:empty::before {
+  content: "아직 메시지가 없습니다.";
+  margin: auto;
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.ol-msg-row {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  max-width: 100%;
+}
+
+.ol-msg-row.mine {
+  align-items: flex-end;
+}
+
+.ol-msg-name {
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+
+.ol-msg-bubble {
+  max-width: 88%;
+  padding: 6px 10px;
+  border-radius: 12px 12px 12px 4px;
+  background: rgba(255, 255, 255, 0.08);
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+  border-left: 2px solid var(--color-cho-blue);
+}
+
+.ol-msg-row.han .ol-msg-bubble {
+  border-left-color: var(--color-han-red);
+}
+
+.ol-msg-row.mine .ol-msg-bubble {
+  border-radius: 12px 12px 4px 12px;
+  background: rgba(59, 130, 246, 0.28);
+}
+
+.ol-msg-row time {
+  font-size: 10px;
+  color: var(--color-text-muted);
+}
+
+.ol-msg-row.system {
+  align-items: center;
+  text-align: center;
+}
+
+.ol-msg-row.system .ol-msg-text {
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: rgba(251, 191, 36, 0.1);
+  color: #fcd34d;
+  font-size: 11.5px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.ol-chat-form {
+  position: sticky;
+  bottom: 0;
+}
+
+/* 레일 채팅 아이콘의 안 읽은 수 */
+.rail-btn {
+  position: relative;
+}
+
+.ol-badge {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  min-width: 15px;
+  height: 15px;
+  padding: 0 3px;
+  box-sizing: border-box;
+  border-radius: 999px;
+  background: #f43f5e;
+  color: #fff;
+  font-size: 9.5px;
+  font-weight: 800;
+  line-height: 15px;
+  text-align: center;
+  pointer-events: none;
+}
+
+/* ===== 대국 중 형세 그래프 끔 (online-ai.js) ===== */
+html.ol-eval-off #hg-eval-row .hg-bar,
+html.ol-eval-off #hg-eval-row .hg-num {
+  visibility: hidden;
+}
+
+html.ol-eval-off #hg-eval-row {
+  opacity: 0.45;
+}
+
+/* ===== 이메일 숫자 코드 인증 (online-verify.js) ===== */
+.ol-chip {
+  display: inline-block;
+  margin-left: 4px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 700;
+  vertical-align: 1px;
+}
+
+.ol-chip[data-state="ok"] {
+  background: rgba(34, 197, 94, 0.16);
+  color: #86efac;
+}
+
+.ol-chip[data-state="pending"] {
+  background: rgba(245, 158, 11, 0.16);
+  color: #fcd34d;
+}
+
+.ol-verify {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  background: rgba(245, 158, 11, 0.07);
+}
+
+.ol-verify-title {
+  margin: 0;
+  font-weight: 800;
+  color: #fde68a;
+}
+
+#ol-code {
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: 0.3em;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.ol-verify-meta {
+  justify-content: space-between;
+}
+
+.ol-code-timer {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.ol-code-timer[data-state="live"] {
+  color: #fcd34d;
+}

@@ -1,0 +1,596 @@
+/**
+ * @fileoverview 양쪽 서랍과 레일 (module/drawers.js).
+ * - 왼쪽 서랍 #preview-panel (기보), 오른쪽 서랍 #setting-box (대국·설정). 서랍 안 세부 모양은
+ *   css/variation.css, css/settings.css, css/record.css, css/recommend.css, css/ai-comment.css가 맡는다.
+ * - 레일 #left-rail·#right-rail: 늘 보인다. 데스크톱은 화면 왼쪽·오른쪽 끝 세로 줄,
+ *   모바일(849px 이하)은 화면 아래 가로 줄(왼쪽 반 = 기보, 오른쪽 반 = 대국·설정). 색은 서랍보다 진하다.
+ * - 서랍은 레일 옆에서 밀려 나오고(데스크톱) 레일 위로 올라온다(모바일). 닫힘 = [hidden].
+ * - 고정(.pinned)한 서랍은 판 자리를 줄여 판을 덮지 않고, 고정하지 않은 서랍은 반투명 유리처럼 판 위에 덮인다.
+ * - 레일 아이콘 하나 = 영역 하나. 지금 영역이 아닌 것은 .tab-off로 감춘다.
+ *   판 자리는 drawers.js applyDrawerLayout이 --board-left/right/bottom으로 넘긴다.
+ * - 서랍 안은 스크롤되지만 스크롤바는 그리지 않는다.
+ */
+
+:root {
+  --rail-size: 48px;
+  --rail-bg: #020617;
+  --left-drawer-w: 320px;
+  --right-drawer-w: 320px;
+  --left-drawer-h: 45vh;
+  --right-drawer-h: 45vh;
+  --board-left: var(--rail-size);
+  --board-right: var(--rail-size);
+  --board-bottom: 0px;
+  --drawer-anim: 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* 판 자리: 레일과 고정된 서랍을 뺀 나머지 (board.js initBoard가 #janggi-app 크기로 판을 계산) */
+#janggi-app {
+  margin-left: var(--board-left);
+  width: calc(100vw - var(--board-left) - var(--board-right));
+  height: calc(100vh - var(--board-bottom));
+}
+
+/* ===== 레일 ===== */
+.drawer-rail {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  width: var(--rail-size);
+  z-index: 840;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 0;
+  box-sizing: border-box;
+  background: var(--rail-bg);
+}
+
+.left-rail {
+  left: 0;
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.right-rail {
+  right: 0;
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.rail-btn {
+  width: 38px;
+  height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: #94a3b8;
+  cursor: pointer;
+  transition: color var(--transition-fast), background var(--transition-fast);
+}
+
+.rail-btn:hover {
+  color: #f8fafc;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* 서랍이 열려 있을 때만 현재 영역 표시 */
+html.left-drawer-open .left-rail .rail-btn.active,
+html.right-drawer-open .right-rail .rail-btn.active {
+  color: #fbbf24;
+  background: rgba(251, 191, 36, 0.14);
+}
+
+.rail-btn:focus-visible {
+  outline: 2px solid #fbbf24;
+  outline-offset: 1px;
+}
+
+/* ===== 서랍 ===== */
+.side-drawer {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  z-index: 820;
+  display: flex !important;
+  flex-direction: column;
+  box-sizing: border-box;
+  overflow: hidden;
+  box-shadow: var(--shadow-panel);
+  transition: transform var(--drawer-anim), width var(--drawer-anim), height var(--drawer-anim), visibility 0s linear 0s;
+}
+
+.left-drawer {
+  left: var(--rail-size);
+  width: var(--left-drawer-w);
+  border-right: 1px solid var(--color-border-light);
+}
+
+.right-drawer {
+  right: var(--rail-size);
+  width: var(--right-drawer-w);
+  border-left: 1px solid var(--color-border-light);
+}
+
+/* 고정하지 않은 서랍은 판 위에 덮인다: 옅은 색이 든 반투명 유리처럼 뒤가 흐리게 비친다
+   (설정 > 인터페이스의 서랍 배경색·투명도는 고정한 서랍에만 쓴다) */
+.side-drawer:not(.pinned) {
+  z-index: 825;
+  background: rgba(15, 23, 42, 0.62) !important;
+  backdrop-filter: blur(10px) saturate(1.2) !important;
+  -webkit-backdrop-filter: blur(10px) saturate(1.2) !important;
+  box-shadow: 0 0 40px rgba(2, 6, 23, 0.45);
+}
+
+/* 레일 아이콘 하나 = 서랍 영역 하나: 지금 영역이 아니면 감춘다 (drawers.js drawerShowTab) */
+.side-drawer .tab-off {
+  display: none !important;
+}
+
+/* 닫힘: 레일 뒤로 밀려 들어가고, 다 들어간 뒤 감춘다 */
+.side-drawer[hidden] {
+  visibility: hidden;
+  transition: transform var(--drawer-anim), width var(--drawer-anim), height var(--drawer-anim), visibility 0s linear 0.28s;
+}
+
+.left-drawer[hidden] {
+  transform: translateX(calc(-100% - var(--rail-size)));
+}
+
+.right-drawer[hidden] {
+  transform: translateX(calc(100% + var(--rail-size)));
+}
+
+/* 처음 그릴 때와 크기를 끄는 동안에는 애니메이션 없이 */
+html:not(.drawers-ready) .side-drawer,
+html.drawer-resizing .side-drawer {
+  transition: none !important;
+}
+
+/* 서랍이 움직이는 동안에는 흐림 효과를 끈다 (판의 나뭇결 필터 위에서 흐림을 매 프레임 다시 그리면 느림) */
+html.drawer-animating .side-drawer,
+html.drawer-resizing .side-drawer {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+html.drawer-resizing,
+html.drawer-resizing * {
+  user-select: none;
+}
+
+.side-drawer > .drawer-main {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 스크롤은 되지만 스크롤바는 그리지 않는다 */
+.side-drawer,
+.side-drawer * {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.side-drawer::-webkit-scrollbar,
+.side-drawer *::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+/* ===== 크기 조절 손잡이 ===== */
+.drawer-resize {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 8px;
+  z-index: 6;
+  cursor: ew-resize;
+  touch-action: none;
+}
+
+.left-drawer .drawer-resize {
+  right: 0;
+}
+
+.right-drawer .drawer-resize {
+  left: 0;
+}
+
+.drawer-resize::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 2px;
+  width: 4px;
+  height: 44px;
+  margin-top: -22px;
+  border-radius: 2px;
+  background: rgba(148, 163, 184, 0.35);
+  transition: background var(--transition-fast);
+}
+
+.drawer-resize:hover::after,
+html.drawer-resizing .drawer-resize::after {
+  background: #fbbf24;
+}
+
+/* ===== 서랍 머리: 고정·닫기 ===== */
+.drawer-head-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: auto;
+}
+
+.preview-panel-title .preview-var-count {
+  margin-left: auto;
+}
+
+.preview-var-count + .drawer-head-actions {
+  margin-left: 6px;
+}
+
+.drawer-pin-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: color var(--transition-fast), background var(--transition-fast), transform var(--transition-fast);
+}
+
+.drawer-pin-btn svg {
+  transform: rotate(45deg);
+  transition: transform var(--transition-fast);
+}
+
+.drawer-pin-btn:hover {
+  color: var(--color-text-primary);
+  background: var(--color-bg-hover);
+}
+
+.drawer-pin-btn.active {
+  color: #fbbf24;
+}
+
+.drawer-pin-btn.active svg {
+  transform: none;
+}
+
+#setting-box .settings-header .drawer-head-actions #close-btn {
+  margin: 0;
+}
+
+/* ===== 서랍 영역 ===== */
+.drawer-section {
+  scroll-margin-top: 8px;
+  transition: box-shadow 0.3s;
+}
+
+.drawer-section.drawer-flash {
+  box-shadow: 0 0 0 2px rgba(251, 191, 36, 0.85);
+}
+
+.drawer-section-desc {
+  margin: 6px 0 8px;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  text-align: left;
+}
+
+/* 왼쪽 서랍 머리의 대회명·대국정보 줄 (ui.js updateMetadataDisplay) */
+.drawer-tournament {
+  font-size: 12px;
+  font-weight: 700;
+  color: #e2e8f0;
+  line-height: 1.4;
+}
+
+.drawer-tournament[hidden] {
+  display: none;
+}
+
+/* 오른쪽 서랍 단축키 표: 서랍 폭에 맞춰 작게 */
+#rd-sec-shortcut .shortcut-table {
+  width: 100%;
+  font-size: 12px;
+}
+
+#rd-sec-shortcut .shortcut-table th,
+#rd-sec-shortcut .shortcut-table td {
+  padding: 4px 3px;
+}
+
+#rd-sec-shortcut .shortcut-key-btn {
+  min-width: 0;
+  padding: 3px 6px;
+  font-size: 11px;
+}
+
+/* ===== 모바일: 레일은 아래 가로 줄, 서랍은 그 위로 올라온다 ===== */
+@media (max-width: 849px) {
+  .drawer-rail {
+    top: auto;
+    bottom: 0;
+    width: 50%;
+    height: var(--rail-size);
+    flex-direction: row;
+    justify-content: space-around;
+    padding: 0 4px;
+    border: none;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .right-rail {
+    border-left: 1px solid rgba(255, 255, 255, 0.12);
+  }
+
+  .side-drawer {
+    top: auto;
+    left: 0;
+    right: 0;
+    bottom: var(--rail-size);
+    width: auto;
+    border: none;
+    border-top: 1px solid var(--color-border-light);
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  }
+
+  .left-drawer {
+    height: var(--left-drawer-h);
+  }
+
+  .right-drawer {
+    height: var(--right-drawer-h);
+  }
+
+  .left-drawer[hidden],
+  .right-drawer[hidden] {
+    transform: translateY(calc(100% + var(--rail-size)));
+  }
+
+  .side-drawer > .drawer-main {
+    padding-top: 10px;
+  }
+
+  .drawer-resize,
+  .left-drawer .drawer-resize,
+  .right-drawer .drawer-resize {
+    top: 0;
+    bottom: auto;
+    left: 0;
+    right: 0;
+    width: auto;
+    height: 16px;
+    cursor: ns-resize;
+  }
+
+  .drawer-resize::after {
+    top: 6px;
+    left: 50%;
+    width: 44px;
+    height: 4px;
+    margin: 0 0 0 -22px;
+  }
+}
+
+/* 왼쪽 서랍: 수순 이동 버튼·대회명·상태·그림 저장은 "현재 기보" 영역에서만 (drawers.js가 data-tab을 단다) */
+#preview-panel:not([data-tab="lv-sec-tree"]) .preview-controls,
+#preview-panel:not([data-tab="lv-sec-tree"]) .lv-tree-only,
+#preview-panel:not([data-tab="lv-sec-tree"]) .preview-mode-chip {
+  display: none !important;
+}
+
+#preview-panel .preview-position-label[hidden],
+#preview-panel .preview-var-count[hidden] {
+  display: none !important;
+}
+
+.lv-drawer-title {
+  white-space: nowrap;
+}
+
+#img-download-btn.lv-tree-only {
+  margin-left: auto;
+}
+
+#img-download-btn + .drawer-head-actions {
+  margin-left: 4px;
+}
+
+/* 상태 글자는 둘 수 없을 때 등에만 나오므로 비어 있으면 자리를 차지하지 않는다 */
+#preview-panel .preview-status:empty {
+  display: none;
+}
+
+/* "저장된 기보" 제목은 서랍 머리에 있으므로 영역 안의 같은 제목 줄은 감춘다 */
+#lv-sec-saved > .category-header {
+  display: none;
+}
+
+/* 왼쪽 서랍 머리: 제목이 남는 자리를 차지해 고정·닫기 버튼이 늘 오른쪽 끝에 붙는다 (영역과 상관없이) */
+.preview-panel-title .lv-drawer-title {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.preview-panel-title .preview-var-count,
+.preview-panel-title .drawer-head-actions,
+#img-download-btn.lv-tree-only,
+#img-download-btn + .drawer-head-actions,
+.preview-var-count + .drawer-head-actions {
+  margin-left: 0;
+}
+
+/* 고정하지 않았을 때 고정 버튼은 닫기 버튼과 같은 색 */
+.drawer-pin-btn {
+  color: var(--color-text-secondary);
+}
+
+/* AI 영역: 추천수 보이기 → 외통 발견 시 알림 → 해설 → 해설 공급자 설정 */
+#rd-sec-ai .ai-mate-alert {
+  display: flex;
+  margin-top: 12px;
+}
+
+#rd-sec-ai .ai-comment-section {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-border);
+}
+
+#rd-sec-ai .ai-sub-title {
+  margin-bottom: 8px;
+  font-size: 13px;
+  font-weight: 800;
+  text-align: left;
+}
+
+/* "기보 정보" 영역의 저장·클립보드 불러오기는 서랍 머리에 (그 영역에서만) */
+#preview-panel:not([data-tab="metadata-category"]) .lv-meta-only {
+  display: none !important;
+}
+
+/* 왼쪽 서랍의 "기보 정보"·"저장된 기보" 영역은 서랍 그 자체: 카드 테두리·배경·바깥 여백 없이 서랍 머리와 같은 안쪽 여백만 */
+#preview-panel .record-sections {
+  padding: 0;
+  border-top: none;
+}
+
+#preview-panel .record-sections > .setting-category {
+  margin: 0;
+  padding: 12px 14px 16px;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+#preview-panel #metadata-category .metadata-content {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+}
+
+/* "현재 기보" 영역: 변화도가 서랍의 남은 높이를 채운다 (variation-tree.js가 그 높이에 최소 100수가 들어가게 그린다) */
+#preview-panel[data-tab="lv-sec-tree"] .preview-panel-body {
+  overflow: hidden;
+}
+
+#preview-panel #lv-sec-tree {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+#preview-panel #lv-sec-tree .variation-tree {
+  flex: 1 1 0; /* 그림 크기가 칸 높이를 늘리지 않게: 칸 높이는 서랍이 정하고 그림이 거기에 맞춘다 */
+  min-height: 120px;
+  max-height: none;
+}
+
+#preview-panel #lv-sec-tree .variation-tree-svg {
+  margin: 0 auto;
+}
+
+/* ===== 오른쪽 서랍: 머리 제목 = 지금 영역 이름, 영역 버튼(초기화·슬롯·복사)은 그 영역일 때만 머리에 ===== */
+#setting-box .settings-header {
+  gap: 4px;
+}
+
+#setting-box #rd-drawer-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+#setting-box .rd-tab-actions {
+  display: none;
+  align-items: center;
+  gap: 4px;
+}
+
+#setting-box[data-tab="rd-sec-newgame"] .rd-tab-actions[data-tab="rd-sec-newgame"],
+#setting-box[data-tab="rd-sec-ai"] .rd-tab-actions[data-tab="rd-sec-ai"],
+#setting-box[data-tab="board-view-category"] .rd-tab-actions[data-tab="board-view-category"],
+#setting-box[data-tab="settings-category"] .rd-tab-actions[data-tab="settings-category"],
+#setting-box[data-tab="rd-sec-shortcut"] .rd-tab-actions[data-tab="rd-sec-shortcut"] {
+  display: inline-flex;
+}
+
+#setting-box .settings-header .drawer-head-actions {
+  margin-left: 4px;
+}
+
+/* 영역은 서랍 그 자체: 카드 테두리·배경·바깥 여백·접기 없이 바로 내용부터 */
+#setting-box .settings-scroll-area {
+  padding: 0;
+}
+
+#setting-box .setting-category.drawer-section {
+  margin: 0;
+  padding: 12px 14px 16px;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+#setting-box .setting-category.drawer-section .accordion-content {
+  display: block !important;
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+}
+
+#setting-box .app-version-label,
+#setting-box .app-license-label {
+  padding-left: 14px;
+  padding-right: 14px;
+}
+
+/* AI 영역 "형세 기록 파일" (eval-file.js) */
+#rd-sec-ai .ef-section {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-border);
+}
+
+#rd-sec-ai .ef-status {
+  margin-bottom: 8px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--color-text-secondary);
+  text-align: left;
+}
+
+#rd-sec-ai .ef-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+#rd-sec-ai .ef-actions .modal-btn {
+  flex: 1 1 auto;
+  min-height: 32px;
+  padding: 6px 10px;
+  font-size: 12px;
+}
+
+#rd-sec-ai .ef-actions [hidden] {
+  display: none;
+}

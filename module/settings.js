@@ -5,39 +5,33 @@
  */
 
 /**
- * 상차림 및 환경설정 패널(#setting-box)을 엽니다.
+ * 오른쪽 서랍(대국·설정, #setting-box)을 엽니다.
  */
 function showSettingsPanel() {
   const settingBox = document.getElementById("setting-box");
   if (!settingBox) return;
-  settingBox.style.display = "flex";
+  settingBox.hidden = false; // 밀려 들어오는 애니메이션은 css/drawer.css
   
   const article = document.getElementById("janggi-app");
   if (article) article.classList.add("settings-open");
-  
-  svg.classList.add("no-transition");
-  initBoard();
-  initPositions();
-  svg.offsetHeight; // Force reflow
-  svg.classList.remove("no-transition");
+  // 판 자리 조정은 서랍 애니메이션이 끝난 뒤 drawers.js applyDrawerLayout이 한다
+  if (typeof syncDrawerButtons === "function") syncDrawerButtons();
 }
 
 /**
- * 상차림 및 환경설정 패널(#setting-box)을 닫습니다.
+ * 오른쪽 서랍(대국·설정, #setting-box)을 닫습니다. 서랍이 고정되어 있으면 닫지 않습니다 (drawers.js).
  */
 function hideSettingsPanel() {
   const settingBox = document.getElementById("setting-box");
   if (!settingBox) return;
-  settingBox.style.display = "none";
+  // 고정된 서랍은 새 대국 등에서 자동으로 닫지 않는다 (사용자가 닫을 때는 drawers.js가 강제로 닫음)
+  if (typeof isDrawerPinned === "function" && isDrawerPinned("right")) return;
+  settingBox.hidden = true;
   
   const article = document.getElementById("janggi-app");
   if (article) article.classList.remove("settings-open");
-  
-  svg.classList.add("no-transition");
-  initBoard();
-  initPositions();
-  svg.offsetHeight; // Force reflow
-  svg.classList.remove("no-transition");
+  // 판 자리 조정은 서랍 애니메이션이 끝난 뒤 drawers.js applyDrawerLayout이 한다
+  if (typeof syncDrawerButtons === "function") syncDrawerButtons();
 }
 
 // 하위 호환용 별칭 유지
@@ -336,7 +330,7 @@ function changePieceShape(value) {
  * @param {string} value - 마커 모양 식별자
  */
 function changeCandiShape(value) {
-  if (!value || typeof value !== "string") value = "empty_circle";
+  if (!value || typeof value !== "string") value = "corner_square";
   candiShapeType = value;
   localStorage.setItem("candiShapeType", candiShapeType);
   saveCurrentConfigToSlot();
@@ -598,7 +592,27 @@ function selectSlot(num) {
 /**
  * 메모리에 로드된 모든 환경 설정을 보드, 기물, 모달, 설정 UI에 일괄 적용합니다.
  */
+/**
+ * 후보지 기본값이 바뀐 판(20261120v10): 예전 기본값(빈 원·파란색)을 그대로 쓰던 사람은 새 기본값(모서리 사각형·탁한 붉은색)으로 한 번 옮긴다.
+ * 직접 다른 모양·색을 골랐던 사람은 그대로 둔다.
+ */
+function migrateCandiDefaults() {
+  try {
+    if (localStorage.getItem("candiDefaultsV2") === "1") return;
+    if (candiShapeType === "empty_circle" && candiColorType === "#3b82f6") {
+      candiShapeType = "corner_square";
+      candiColorType = "#a5484a";
+      localStorage.setItem("candiShapeType", candiShapeType);
+      localStorage.setItem("candiColorType", candiColorType);
+    }
+    localStorage.setItem("candiDefaultsV2", "1");
+  } catch (e) {
+    // 저장 못 해도 이번 화면에서는 새 기본값
+  }
+}
+
 function applyLoadedConfig() {
+  migrateCandiDefaults();
   // 1. UI 및 외관 테마 적용
   changeBoardColor(boardColorType);
   changeChoColor(choColorType);
@@ -634,7 +648,7 @@ function applyLoadedConfig() {
   
   // 3. 설정 창 UI 값들 최신화
   initSettingsUI();
-  initScoreboardRotation();
+  ensureGameTimer();
   updateCommentBubble();
   
   // 4. AI 대국 모드 점검 및 실행
@@ -688,11 +702,6 @@ function buildCurrentConfigObject() {
     aiMode,
     cursorLockMode,
     shortcutKeys,
-    scoreAutoRotate,
-    scoreRotateInterval,
-    scoreShowSlide1,
-    scoreShowSlide2,
-    scoreShowSlide3,
     autoplaySpeed,
     autoplayUseAnim,
     shortcutModalBgColor,
@@ -755,11 +764,6 @@ function loadConfigFromSlot() {
     if (config.shortcutKeys) {
       shortcutKeys = migrateShortcutKeys(config.shortcutKeys);
     }
-    if (config.scoreAutoRotate !== undefined && config.scoreAutoRotate !== null) scoreAutoRotate = (config.scoreAutoRotate === "true" || config.scoreAutoRotate === true);
-    if (config.scoreRotateInterval !== undefined && config.scoreRotateInterval !== null) scoreRotateInterval = parseInt(config.scoreRotateInterval, 10);
-    if (config.scoreShowSlide1 !== undefined && config.scoreShowSlide1 !== null) scoreShowSlide1 = (config.scoreShowSlide1 === "true" || config.scoreShowSlide1 === true);
-    if (config.scoreShowSlide2 !== undefined && config.scoreShowSlide2 !== null) scoreShowSlide2 = (config.scoreShowSlide2 === "true" || config.scoreShowSlide2 === true);
-    if (config.scoreShowSlide3 !== undefined && config.scoreShowSlide3 !== null) scoreShowSlide3 = (config.scoreShowSlide3 === "true" || config.scoreShowSlide3 === true);
     if (config.autoplaySpeed !== undefined && config.autoplaySpeed !== null) autoplaySpeed = parseFloat(config.autoplaySpeed);
     if (config.autoplayUseAnim !== undefined && config.autoplayUseAnim !== null) autoplayUseAnim = (config.autoplayUseAnim === "true" || config.autoplayUseAnim === true);
     if (config.shortcutModalBgColor) shortcutModalBgColor = config.shortcutModalBgColor;
@@ -788,11 +792,6 @@ function loadConfigFromSlot() {
     localStorage.setItem("aiMode", aiMode);
     localStorage.setItem("cursorLockMode", cursorLockMode);
     localStorage.setItem("shortcutKeys", JSON.stringify(shortcutKeys));
-    localStorage.setItem("scoreAutoRotate", scoreAutoRotate);
-    localStorage.setItem("scoreRotateInterval", scoreRotateInterval);
-    localStorage.setItem("scoreShowSlide1", scoreShowSlide1);
-    localStorage.setItem("scoreShowSlide2", scoreShowSlide2);
-    localStorage.setItem("scoreShowSlide3", scoreShowSlide3);
     localStorage.setItem("autoplaySpeed", autoplaySpeed);
     localStorage.setItem("autoplayUseAnim", autoplayUseAnim);
     localStorage.setItem("shortcutModalBgColor", shortcutModalBgColor);
@@ -837,7 +836,19 @@ function resetCategory1() {
   changeCharim(1, 0, null); // Top default: 마상마상
   changeCharim(0, 0, null); // Bottom default: 마상마상
   changeNation(true); // default nation: Cho (iAmCho = true)
+  aiMode = 1; // 기본: 인공지능 대국 (AI가 위쪽)
+  localStorage.setItem("aiMode", aiMode);
+  const aiModeSelect = document.getElementById("ai-mode-select");
+  if (aiModeSelect) aiModeSelect.value = aiMode;
   saveCurrentConfigToSlot();
+}
+
+/**
+ * "그림변경" 범주(장기판 보기 + 애니메이션)를 기본값으로 초기화합니다.
+ */
+function resetCategoryDrawing() {
+  resetCategory2();
+  resetCategory3();
 }
 
 /**
@@ -856,8 +867,8 @@ function resetCategory2() {
   choColorType = "blue";
   hanColorType = "red";
   pieceShapeType = "octagon";
-  candiShapeType = "empty_circle";
-  candiColorType = "#3b82f6";
+  candiShapeType = "corner_square";
+  candiColorType = "#a5484a";
   
   localStorage.setItem("showCoordinates", showCoordinates);
   localStorage.setItem("sizeKing", sizeKing);
@@ -893,22 +904,20 @@ function resetCategory3() {
 }
 
 /**
- * 카테고리 4 (환경 설정창 외관 및 AI 설정)를 기본값으로 초기화합니다.
+ * 카테고리 4 "UI" (설정창 외관)를 기본값으로 초기화합니다. 인공지능 대국은 "재시작" 범주(resetCategory1)에서 초기화합니다.
  */
 function resetCategory4() {
   settingsBgColor = "#0f172a";
-  settingsOpacity = 0.55;
+  settingsOpacity = 0.94;
   settingsTextColorType = "auto";
   settingsTextColorCustom = "#f8fafc";
   settingsAccentColor = "#3b82f6";
-  aiMode = 0;
   
   localStorage.setItem("settingsBgColor", settingsBgColor);
   localStorage.setItem("settingsOpacity", settingsOpacity);
   localStorage.setItem("settingsTextColorType", settingsTextColorType);
   localStorage.setItem("settingsTextColorCustom", settingsTextColorCustom);
   localStorage.setItem("settingsAccentColor", settingsAccentColor);
-  localStorage.setItem("aiMode", aiMode);
   
   changeSettingsBgColor(settingsBgColor);
   changeSettingsOpacity(settingsOpacity);
@@ -1009,7 +1018,7 @@ function initSettingsUI() {
   const candiColorSelect = document.getElementById("candi-color-select");
   const candiColorPicker = document.getElementById("candi-color-picker");
   if (candiColorSelect) {
-    if (candiColorType.startsWith("#") && !PRESET_ACCENT_COLORS.includes(candiColorType)) {
+    if (candiColorType.startsWith("#") && ![...PRESET_ACCENT_COLORS, "#a5484a"].includes(candiColorType)) {
       candiColorSelect.value = "custom";
       if (candiColorPicker) {
         candiColorPicker.style.display = "inline-block";
@@ -1076,22 +1085,6 @@ function initSettingsUI() {
   const cursorLockSelect = document.getElementById("cursor-lock-select");
   if (cursorLockSelect) cursorLockSelect.value = cursorLockMode ? "true" : "false";
 
-  // Scoreboard Settings Sync
-  const autoRotateEl = document.getElementById("score-auto-rotate");
-  if (autoRotateEl) autoRotateEl.value = scoreAutoRotate ? "true" : "false";
-  
-  const rotateIntervalEl = document.getElementById("score-rotate-interval");
-  if (rotateIntervalEl) rotateIntervalEl.value = scoreRotateInterval.toString();
-  
-  const showSlide1El = document.getElementById("score-show-slide1");
-  if (showSlide1El) showSlide1El.checked = scoreShowSlide1;
-  
-  const showSlide2El = document.getElementById("score-show-slide2");
-  if (showSlide2El) showSlide2El.checked = scoreShowSlide2;
-  
-  const showSlide3El = document.getElementById("score-show-slide3");
-  if (showSlide3El) showSlide3El.checked = scoreShowSlide3;
-
   // Autoplay Settings Sync
   const autoplaySpeedSlider = document.getElementById("autoplay-speed-slider");
   if (autoplaySpeedSlider) autoplaySpeedSlider.value = autoplaySpeed;
@@ -1100,3 +1093,10 @@ function initSettingsUI() {
   const autoplayUseAnimCheck = document.getElementById("autoplay-use-anim");
   if (autoplayUseAnimCheck) autoplayUseAnimCheck.checked = autoplayUseAnim;
 }
+
+// body에 perspective가 걸려 있어 body 안의 position:fixed는 화면이 아니라 body 기준으로 붙는다.
+// 설정 패널을 <html> 바로 아래로 옮겨 화면 오른쪽(데스크톱)·아래 서랍(모바일)에 정확히 붙인다.
+document.addEventListener("DOMContentLoaded", () => {
+  const box = document.getElementById("setting-box");
+  if (box) document.documentElement.appendChild(box);
+});

@@ -59,6 +59,7 @@ button {
 }
 
 body {
+  margin: 0; /* 판·서랍 폭 계산이 화면 폭(100vw)과 맞도록 */
   perspective: 1200px;
   overflow: hidden;
 }
@@ -76,11 +77,24 @@ body {
   transition: padding-right 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-@media (min-width: 850px) {
-  #janggi-app.settings-open,
-  #janggi-app.record-open {
-    padding-right: 450px;
-  }
+/* 설정 패널·기보보기 패널이 열렸을 때의 판 폭은 settings.css·variation.css가 맡는다 */
+
+/* 선형 아이콘 (WebApp Common GUI: 24px 격자, 선 1.75px, 둥근 끝, 면 없음). 버튼 안 20px, 글자 옆 14px */
+.ico {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.75;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  flex-shrink: 0;
+  vertical-align: middle;
+}
+
+.ico.sm {
+  width: 14px;
+  height: 14px;
 }
 
 /* SPA 전역 헤더 카운터 및 :before 강제 번호 매기기 무력화 (샌드박싱) */
