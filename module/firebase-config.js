@@ -2,8 +2,9 @@
  * @fileoverview 온라인 대국 설정 (한 곳에서만 고친다).
  *  - JANGGI_ONLINE_BACKEND: "fake"     = 같은 브라우저의 탭끼리 BroadcastChannel로 주고받는 개발용 가짜 백엔드
  *                           "firebase" = 실제 Firebase (Authentication + Firestore)
- *    Firebase 콘솔 설정(docs/online-setup.md)을 마친 뒤 아래 한 줄을 "firebase"로 바꾸면 된다.
- *    개발 중에는 주소 뒤에 ?backend=fake 또는 ?backend=firebase 를 붙여 잠깐 바꿔 볼 수도 있다.
+ *    기본은 "firebase"(localhost 개발 서버와 배포 주소 모두). file:// 로 열었을 때만 "fake".
+ *    두 탭으로 가짜 대국을 시험하려면 주소 뒤에 ?backend=fake 를 붙인다.
+ *    주소 뒤에 ?backend=fake 또는 ?backend=firebase 를 붙이면 잠깐 바꿔 볼 수 있다 (online-core.js의 olBackendKind).
  *  - JANGGI_FIREBASE_CONFIG: Firebase 웹 앱 설정값. 공개해도 되는 값이고, 데이터 보안은 firestore.rules가 지킨다.
  *    Analytics(measurementId)는 쓰지 않는다 (개인정보 최소화).
  *  - JANGGI_FIREBASE_SDK: Firebase JS SDK 버전(CDN 주소에 그대로 들어간다). 정확한 버전으로 고정한다.
@@ -11,7 +12,10 @@
  * @module firebase-config
  */
 
-var JANGGI_ONLINE_BACKEND = "fake";
+var JANGGI_ONLINE_BACKEND = (function () {
+  // file://는 Firebase 로그인이 불가능(승인된 도메인 아님)하므로 가짜. localhost는 Firebase 기본 승인 도메인이라 실제 Firebase.
+  return window.location.protocol === "file:" ? "fake" : "firebase";
+})();
 
 var JANGGI_FIREBASE_SDK = "11.10.0";
 

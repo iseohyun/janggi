@@ -34,6 +34,8 @@
  */
 
 window.addEventListener("error", function (e) {
+  // 브라우저가 크기 감지 알림을 다음 프레임으로 미뤘다는 무해한 메시지
+  if (e.message && e.message.indexOf("ResizeObserver loop") !== -1) return;
   console.error("[Janggi Runtime Error]", e.message, "at", e.filename, ":", e.lineno, ":", e.colno);
 });
 

@@ -79,14 +79,17 @@ Authentication → **Settings** → **승인된 도메인(Authorized domains)** 
 
 ## 5. 실제 Firebase로 바꾸기
 
-`module/firebase-config.js`에서 한 줄만 바꿉니다.
+따로 바꿀 것이 없습니다. `module/firebase-config.js`가 접속 주소를 보고 백엔드를 고릅니다(2026-11-20부터).
 
-```js
-var JANGGI_ONLINE_BACKEND = "firebase";
-```
+- 기본은 실제 Firebase입니다. `http://localhost:5187`(개발 서버)과 `https://janggi.iseohyun.com` 모두 해당합니다.
+  - `localhost`는 Firebase의 기본 승인 도메인이라 Google 로그인이 그대로 됩니다.
+  - `127.0.0.1`은 승인 도메인이 아니라서 로그인이 막힙니다. 개발할 때는 `localhost`로 여세요.
+- `file://`로 열었을 때만 가짜 백엔드를 씁니다.
+- 가짜 백엔드로 시험하려면 주소 뒤에 `?backend=fake`를 붙입니다. 예: `http://localhost:5187/?backend=fake`
+  - 같은 브라우저의 탭끼리만 통합니다.
+  - 인증 코드는 메일 대신 콘솔에 찍힙니다.
 
-배포 전에 주소 뒤에 `?backend=firebase`를 붙여 미리 시험할 수도 있습니다 (예: `http://localhost:5187/?backend=firebase`).
-바꾼 뒤에는 캐시 태그(`?v=`·`BUILD_TAG`)를 하나 올려 주세요.
+**보안 규칙(4장)과 함수(7장)를 배포하기 전에는** 배포 주소의 온라인 대국이 권한 오류로 동작하지 않습니다. 이메일 인증 코드도 함수를 배포해야 나갑니다.
 
 ## 6. 직접 확인할 것 (실제 계정이 필요해 대신 하지 않았습니다)
 

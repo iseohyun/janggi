@@ -67,6 +67,8 @@ function syncRecordGroups(count) {
 
 // ===== 프로 대국 묶음 (data/famous-games.json) =====
 const FAMOUS_DATA_URL = "data/famous-games.json";
+/** 프로 대국 묶음을 읽을지. 장기도사 이용 허락을 받고 data/famous-games.json을 넣을 때 true로 바꾼다 */
+const FAMOUS_DATA_ENABLED = false;
 const FAMOUS_PAGE = 30; // 한 번에 보이는 줄 수
 const FAMOUS_FILTER_MIN = 5; // 이보다 적으면 필터 줄을 숨긴다
 let famousExtra = []; // 파일에서 읽은 기보
@@ -240,6 +242,7 @@ function showMoreFamousGames() {
 
 /** data/famous-games.json을 읽어 목록에 붙인다. 없으면 조용히 내장 기보만 쓴다 */
 async function loadFamousGameData() {
+  if (!FAMOUS_DATA_ENABLED) return; // 파일이 아직 배포되지 않아 요청하면 콘솔에 오류 줄만 남는다
   try {
     const res = await fetch(FAMOUS_DATA_URL, { cache: "no-cache" });
     if (!res.ok) return;
