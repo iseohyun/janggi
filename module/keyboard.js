@@ -166,6 +166,14 @@ function handleKeyDown(e) {
     return;
   }
 
+  // 8c-1. 한수쉼 (, pass-turn.js)
+  if (matchShortcutKey("passTurn", e)) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (typeof passTurn === "function") passTurn();
+    return;
+  }
+
   // 8d. AI 훈수 한 수 받기 (기본 단축키 없음)
   if (matchShortcutKey("requestAIHint", e)) {
     e.preventDefault();
@@ -410,7 +418,10 @@ function handleKeyDown(e) {
         // 후보 이동지가 아닌 경우, 해당 좌표에 내 다른 기물이 있으면 해당 기물로 선택 변경
         const pIdx = whoIsit(kbCursorX, kbCursorY);
         const isChoPiece = (pIdx < 16) === iAmCho;
-        if (pIdx < NO_PIECE && (isChoTurn === isChoPiece)) {
+        if (pIdx === curSelect && typeof canPassWithKing === "function" && canPassWithKing(pIdx)) {
+          // 고른 궁 위에서 한 번 더 고르면 한수쉼 (pass-turn.js)
+          passTurn();
+        } else if (pIdx < NO_PIECE && (isChoTurn === isChoPiece)) {
           selected(pIdx);
         } else {
           // 허공이나 상대 기물 클릭 시 선택 취소
@@ -434,6 +445,7 @@ const shortcutActionNames = {
   openCommentEdit: "현재 수순 코멘트 편집창 열기",
   toggleOpponentAI: "상대 AI 모드 켜기/끄기",
   requestAIHint: "AI 훈수 한 수 받기",
+  passTurn: "한수쉼",
   toggleExplore: "놓아보기 켜기/끄기",
   toggleRecommend: "AI 훈수(추천수) 보이기/숨기기",
   recommend1: "추천수 1 두기",

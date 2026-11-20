@@ -163,7 +163,10 @@ function generateGameRecordText() {
   const history = rebuildHistory();
   history.forEach(h => {
     const commentSuffix = h.comment ? ` (${h.comment})` : "";
-    lines.push(`${h.step}. ${h.player} ${h.startY}${h.startX}${h.pieceName}${h.endY}${h.endX}${commentSuffix}`);
+    // 한수쉼(궁이 제자리로 가는 수, pass-turn.js)은 "12. 한 한수쉼"으로 적는다
+    const isPass = h.pieceName === "궁" && h.startX === h.endX && h.startY === h.endY && h.captured >= NO_PIECE;
+    const moveText = isPass ? "한수쉼" : `${h.startY}${h.startX}${h.pieceName}${h.endY}${h.endX}`;
+    lines.push(`${h.step}. ${h.player} ${moveText}${commentSuffix}`);
   });
   
   return lines.join("\n");
@@ -482,6 +485,13 @@ function parseMoveLine(line, index) {
     clean = clean.replace(/^(\d+)\s*[\.:]/, "").trim();
   }
   
+  // 한수쉼: "12. 한 한수쉼" (진영 글자 "한"과 겹치지 않게 먼저 떼어 낸다)
+  if (/한수\s*쉼/.test(clean)) {
+    const rest = clean.replace(/한수\s*쉼/, "");
+    const passPlayer = rest.includes("초") ? "초" : rest.includes("한") ? "한" : (index % 2 === 0 ? "초" : "한");
+    return { step: step || index + 1, player: passPlayer, pass: true, pieceName: "궁", comment };
+  }
+
   // Extract player if present
   let player = null;
   if (clean.includes("초")) {
@@ -774,6 +784,12 @@ function importRecordFromText(text) {
   
   // 5. 착수 시뮬레이션을 통해 log 배열 빌드 및 기물 메모리 위치 동기화
   for (let move of parsedMoves) {
+    if (move.pass) {
+      // 한수쉼: 그 진영 궁이 제자리로 가는 수로 남긴다 (pass-turn.js)
+      const king = ((move.player === "초") === iAmCho) ? 0 : 16;
+      if (pieces[king].x !== 0) log.push({ i: king, x: pieces[king].x, y: pieces[king].y, t: NO_PIECE, comment: move.comment || "" });
+      continue;
+    }
     let pieceId = -1;
     for (let pIdx = 0; pIdx < 32; pIdx++) {
       if (pieces[pIdx].x === move.startX && pieces[pIdx].y === move.startY) {

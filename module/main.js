@@ -185,7 +185,9 @@ function move(i, x, y) {
   updateSavedRecordsListUI();
 
   // 따먹은 객체가 있다면 처리
-  const t = whoIsit(x, y);
+  // 제자리 수(한수쉼, pass-turn.js)는 자기 자신을 잡지 않는다
+  const found = whoIsit(x, y);
+  const t = found === i ? NO_PIECE : found;
   if (t < NO_PIECE) {
     setPieces(t, 0, 0);
 

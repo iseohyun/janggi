@@ -550,8 +550,9 @@ function tcSnapshot() {
  */
 function tcOnMove(before, i, x, y, byAI) {
   const after = tcSnapshot();
-  if (after[i].x !== x || after[i].y !== y || (before[i].x === x && before[i].y === y)) return; // 실제로 두어지지 않음
+  if (after[i].x !== x || after[i].y !== y) return; // 실제로 두어지지 않음
   tcClear();
+  if (before[i].x === x && before[i].y === y) return; // 한수쉼 (pass-turn.js): 지난 알림만 지운다
   const mine = !byAI && tcSide(i) === tcMySide();
   const cfg = threatCallConfig;
   if (mine ? !cfg.movers.mine : !cfg.movers.opp) return;

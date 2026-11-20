@@ -133,7 +133,11 @@ service cloud.firestore {
             && d.undo == null
             && (d.status == 'playing'
                 || (d.status == 'ended' && d.result.reason == 'checkmate'
-                    && d.result.winner == mySide() && d.result.by == me())))
+                    && d.result.winner == mySide() && d.result.by == me())
+                // 연속 한수쉼(초·한이 잇달아 한수쉼): 점수 승(cho·han) 또는 비김(null)
+                || (d.status == 'ended' && d.result.reason == 'doublePass'
+                    && (d.result.winner == null || d.result.winner in ['cho', 'han'])
+                    && d.result.by == me())))
           // ② 무르기 받아들이기: 상대가 청한 무르기를, 마지막 수 문서를 지우면서
           || (o.status == 'playing'
             && o.undo != null && o.undo.by != me() && o.undo.ply == o.ply

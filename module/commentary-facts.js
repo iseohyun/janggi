@@ -178,6 +178,7 @@ function cfGradeLoss(loss) {
  * @param {{i:number,x:number,y:number}} m
  */
 function cfDescribeMove(m) {
+  if (pieces[m.i].x === m.x && pieces[m.i].y === m.y) return `${cfTeamName(cfTeamOf(m.i))} 한수쉼`; // pass-turn.js
   const from = cfCoord(pieces[m.i].x, pieces[m.i].y);
   const target = whoIsit(m.x, m.y);
   let text = `${cfTeamName(cfTeamOf(m.i))} ${from}${cfPieceName(m.i)}${cfCoord(m.x, m.y)}`;

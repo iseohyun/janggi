@@ -13,10 +13,12 @@
  *  - 적용 방법: 전역 getFilteredLegalMoves(ai.js)를 감싼다. 판의 후보 표시·키보드·AI(내장)·Fairy-Stockfish(searchmoves)·
  *    추천수가 모두 이 함수를 쓰므로 한 곳에서 걸린다. 반복 검사는 지금 판 국면(줄의 마지막 국면)을 물을 때만 한다
  *    (내장 AI가 수읽기 중 기물을 옮겨 보는 국면에는 걸지 않는다).
+ *  - 연속 한수쉼(pass-turn.js): 초와 한이 잇달아 한수쉼하면 대국이 끝난다.
+ *      점수 = 기물 점수(한 덤 1.5 포함)가 높은 쪽 승(카장룰), 비김 = 무승부.
  *  - 저장: localStorage "janggiRules"
  * 공개 함수: getGameRules(), setRulePreset(value), setRuleRepetition(checked), setRuleCheckExempt(checked),
  *           setRuleHigherYields(checked), setRuleBikjang(value), setRuleMoveLimit(checked), setRuleUnder10(checked),
- *           isBikjangNow()
+ *           setRuleDoublePass(value), isBikjangNow()
  * @module game-rules
  * @depends state, rules, ai, main, variation, preview, app-dialog, ui
  */
@@ -25,7 +27,7 @@ const GR_STORAGE_KEY = "janggiRules";
 const GR_MOVE_LIMIT = 200;
 const GR_MIN_SCORE = 10;
 const GR_PRESETS = {
-  kakao: { repetition: true, checkExempt: true, higherYields: false, bikjang: "forbid", moveLimit: true, under10: true }
+  kakao: { repetition: true, checkExempt: true, higherYields: false, bikjang: "forbid", moveLimit: true, under10: true, doublePass: "score" }
 };
 let gameRules = Object.assign({ preset: "kakao" }, GR_PRESETS.kakao);
 
@@ -52,7 +54,8 @@ function grLoad() {
         higherYields: !!saved.higherYields,
         bikjang: saved.bikjang === "allow" ? "allow" : "forbid",
         moveLimit: saved.moveLimit !== false,
-        under10: saved.under10 !== false
+        under10: saved.under10 !== false,
+        doublePass: saved.doublePass === "draw" ? "draw" : "score"
       };
       if (gameRules.preset === "kakao") Object.assign(gameRules, GR_PRESETS.kakao);
     }
@@ -75,6 +78,7 @@ function grRender() {
   set("rule-bikjang-select", "value", gameRules.bikjang);
   set("rule-move-limit", "checked", gameRules.moveLimit);
   set("rule-under10", "checked", gameRules.under10);
+  set("rule-double-pass-select", "value", gameRules.doublePass);
   // 반복 금지가 꺼져 있으면 딸린 두 규칙은 흐리게
   ["rule-check-exempt", "rule-higher-yields"].forEach(id => {
     const el = document.getElementById(id);
@@ -98,7 +102,7 @@ function setRulePreset(value) {
   if (value === "kakao") {
     gameRules = Object.assign({ preset: "kakao" }, GR_PRESETS.kakao);
     grChanged(false);
-    if (typeof showToast === "function") showToast("대국 규칙: 카장룰 (3번 반복 금지·장군 예외·빅장 금지·200수·10점 미만)");
+    if (typeof showToast === "function") showToast("대국 규칙: 카장룰 (3번 반복 금지·장군 예외·빅장 금지·200수·10점 미만·연속 한수쉼은 점수)");
   } else {
     gameRules.preset = "custom";
     grChanged(false);
@@ -132,6 +136,12 @@ function setRuleMoveLimit(checked) {
 
 function setRuleUnder10(checked) {
   gameRules.under10 = !!checked;
+  grChanged(true);
+}
+
+/** 연속 한수쉼: "score"(기물 점수 높은 쪽 승) | "draw"(비김) */
+function setRuleDoublePass(value) {
+  gameRules.doublePass = value === "draw" ? "draw" : "score";
   grChanged(true);
 }
 
@@ -302,9 +312,28 @@ function grEndByScore(title, reason) {
   }
 }
 
+/** 대국을 비김으로 끝낸다 */
+function grEndDraw(title, reason) {
+  gameEnded = true;
+  if (typeof clearCandiBox === "function") clearCandiBox();
+  const msg = `${reason} 비겼습니다.`;
+  if (typeof showAppDialog === "function") {
+    showAppDialog({ title, message: msg, tone: "info", buttons: [{ label: "닫기", value: null, primary: true }] });
+  } else {
+    alert(`${title} ${msg}`);
+  }
+}
+
 /** 실제 대국에서 한 수 둔 뒤: 점수로 끝나는 규칙을 본다 */
 function grCheckScoreEnd() {
   if (gameEnded) return;
+  // 초와 한이 잇달아 한수쉼 (pass-turn.js isPassMove)
+  const n = log.length;
+  if (n >= 2 && typeof isPassMove === "function" && isPassMove(n - 1) && isPassMove(n - 2)) {
+    if (gameRules.doublePass === "draw") grEndDraw("연속 한수쉼", "초와 한이 잇달아 한수쉼했습니다.");
+    else grEndByScore("연속 한수쉼", "초와 한이 잇달아 한수쉼했습니다.");
+    return;
+  }
   if (gameRules.bikjang === "allow" && isBikjangNow()) {
     grEndByScore("빅장!", "두 궁이 마주 보았습니다.");
     return;

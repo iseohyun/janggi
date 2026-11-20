@@ -104,6 +104,11 @@ const DEFAULT_SHORTCUT_KEYS = {
     primary: null,
     secondary: null
   },
+  // 한수쉼 (pass-turn.js)
+  passTurn: {
+    primary: { key: ",", ctrl: false, alt: false, shift: false },
+    secondary: null
+  },
   toggleExplore: {
     primary: { key: "i", ctrl: false, alt: false, shift: false },
     secondary: null

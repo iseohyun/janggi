@@ -234,3 +234,60 @@
     font-size: 9px;
   }
 }
+
+/* 한수쉼 버튼 (헤더 AI 훈수 버튼 왼쪽, module/pass-turn.js) */
+.hdr-pass-btn {
+  flex: 0 0 auto;
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: var(--radius-md);
+  background: #fff;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 0.2s, color 0.2s, transform 0.1s;
+}
+
+.hdr-pass-btn:hover {
+  background-color: #f1f5f9;
+  color: #1e293b;
+}
+
+.hdr-pass-btn:active {
+  transform: scale(0.95);
+}
+
+@media (max-width: 520px) {
+  .hdr-pass-btn {
+    height: 30px;
+    padding: 0 6px;
+    font-size: 12px;
+  }
+}
+
+/* 궁을 고르면 궁 위에 뜨는 "한수쉼" 표시 (누르면 한수쉼) */
+.pass-hint {
+  cursor: pointer;
+}
+
+.pass-hint-box {
+  fill: #0f766e;
+  stroke: rgba(15, 23, 42, 0.85);
+  stroke-width: 1.5;
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.4));
+}
+
+.pass-hint:hover .pass-hint-box {
+  fill: #0d9488;
+}
+
+.pass-hint-text {
+  fill: #fff;
+  font-weight: 800;
+  text-anchor: middle;
+  dominant-baseline: central;
+  pointer-events: none;
+}

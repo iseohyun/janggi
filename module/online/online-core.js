@@ -23,7 +23,7 @@ const OL_CODE_LEN = 8;
 const OL_CHAT_MAX = 300; // 채팅 한 줄 최대 글자 수 (firestore.rules와 같게)
 const OL_NAME_MAX = 40;
 const OL_TIMEOUT_GRACE_S = 5; // 상대 시간패를 알리기 전에 더 기다리는 시간 (네트워크 늦음 대비)
-const OL_REASON_KO = { checkmate: "외통수", resign: "기권", timeout: "시간패" };
+const OL_REASON_KO = { checkmate: "외통수", resign: "기권", timeout: "시간패", doublePass: "연속 한수쉼" };
 
 var olBackend = null;
 var olBackendError = null;
@@ -613,7 +613,11 @@ function olApplyRemote(m, ply, animate) {
     i = whoIsit(from.x, from.y);
     if (i >= NO_PIECE) reason = "출발 칸에 기물이 없음";
     else if (((i < 16) === iAmCho ? "cho" : "han") !== side) reason = `${olSideName(side)} 차례에 상대 기물을 움직임`;
-    else if (!getFilteredLegalMoves(side).some(mm => mm.i === i && mm.x === to.x && mm.y === to.y)) reason = "규칙에 어긋난 수";
+    else if (from.x === to.x && from.y === to.y) {
+      // 한수쉼 (pass-turn.js): 궁만, 장군을 받고 있지 않을 때만
+      if (i !== 0 && i !== 16) reason = "궁이 아닌 기물의 제자리 수";
+      else if (isKingInCheck(side)) reason = "장군을 받는 중의 한수쉼";
+    } else if (!getFilteredLegalMoves(side).some(mm => mm.i === i && mm.x === to.x && mm.y === to.y)) reason = "규칙에 어긋난 수";
   }
   if (reason) {
     olRejected.add(rejectKey);
@@ -630,7 +634,8 @@ function olApplyRemote(m, ply, animate) {
       olApplying = false;
     }
   } else {
-    const t = whoIsit(to.x, to.y);
+    const found = whoIsit(to.x, to.y);
+    const t = found === i ? NO_PIECE : found; // 한수쉼은 자기를 잡지 않는다
     if (t < NO_PIECE) {
       pieces[t].x = 0;
       pieces[t].y = 0;
@@ -659,8 +664,21 @@ function olSendMyMove(fromLocal, x, y) {
   olSynced.push({ fx: f.x, fy: f.y, tx: t.x, ty: t.y });
   olPending = ply;
   const patch = { clock: mv.clock, lastMoveAtMs: now, undo: null };
-  const mate = gameEnded; // move() 안의 checkGameStatus가 외통이면 끝냈다
-  if (mate) {
+  // move() 안의 checkGameStatus(와 game-rules.js)가 대국을 끝냈으면 까닭을 가려 서버에 남긴다
+  const opp = olOther(olMySide);
+  const n = log.length;
+  const doublePass = gameEnded && typeof isPassMove === "function" && n >= 2 && isPassMove(n - 1) && isPassMove(n - 2);
+  const mate = gameEnded && !doublePass && isKingInCheck(opp) && getFilteredLegalMoves(opp).length === 0;
+  let passWinner = null;
+  if (doublePass) {
+    patch.status = "ended";
+    const rules = typeof getGameRules === "function" ? getGameRules() : {};
+    if (rules.doublePass !== "draw") {
+      const s = calculateTeamScores();
+      passWinner = s.scoreCho > s.scoreHan ? "cho" : s.scoreHan > s.scoreCho ? "han" : null;
+    }
+    patch.result = { winner: passWinner, reason: "doublePass", by: olUser.uid, atMs: now };
+  } else if (mate) {
     patch.status = "ended";
     patch.result = { winner: olMySide, reason: "checkmate", by: olUser.uid, atMs: now };
   }
@@ -668,6 +686,7 @@ function olSendMyMove(fromLocal, x, y) {
     if (olPending === ply) olPending = null;
     olEmit("room"); // 무르기 요청 단추 등은 보내기가 끝난 뒤에 쓸 수 있다
     if (mate) olSystem(`외통수! ${olSideName(olMySide)} 대국자가 이겼습니다.`);
+    if (doublePass) olSystem(`연속 한수쉼으로 대국이 끝났습니다. ${passWinner ? `${olSideName(passWinner)} 승 (기물 점수)` : "무승부"}.`);
   }).catch(err => {
     console.error("[online] 수를 보내지 못했습니다:", err);
     if (olPending === ply) olPending = null;
