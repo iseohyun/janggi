@@ -1,11 +1,11 @@
 /**
  * @fileoverview 온라인 대국 화면.
- *  - 왼쪽 서랍 새 영역 "온라인 대국"(#ol-sec-online): 로그인(Google·이메일 로그인·회원가입·비밀번호 재설정)·로그아웃,
+ *  - 왼쪽 서랍 새 영역 "온라인 대국"(#ol-sec-online): 로그인(Google·이메일 승인형은 online-email-login.js)·로그아웃·모든 기기에서 로그아웃,
  *    방 만들기(내 진영·제한 시간·상차림), 초대 링크 복사·공유, 코드로 입장, 대국자, AI 도움 켜기, 무르기·기권·나가기.
  *  - 오른쪽 서랍 새 영역 "채팅"(#ol-sec-chat): 두 대국자의 채팅과 시스템 메시지(입장·퇴장·무르기·기권·AI 켬), 무르기 응답.
  *  - 영역은 이 파일이 읽힐 때(DOMContentLoaded 전) 서랍에 끼워 넣고 drawers.js의 DRAWER_TABS에 등록한다.
  *    그래서 index.html·drawers.js를 크게 고치지 않는다. 레일 아이콘도 여기서 붙인다.
- * 공개(data-action): olGoogleSignIn, olSetAuthMode, olSignOut, olCreateRoomFromForm, olJoinFromForm, olCopyInvite,
+ * 공개(data-action): olGoogleSignIn, olSignOut, olSignOutAll, olCreateRoomFromForm, olJoinFromForm, olCopyInvite,
  *       olShareInvite, olRequestUndoBtn, olResignBtn, olLeaveBtn, olUndoAccept, olUndoReject
  * @module online/online-ui
  * @depends online/online-core, online/online-ai, drawers, ui
@@ -13,7 +13,6 @@
 
 const OL_CHARIM_NAMES = ["마상마상", "마상상마", "상마마상", "상마상마"];
 const OL_TIME_CHOICES = [0, 5, 10, 20, 30, 60];
-let olAuthMode = "signin"; // "signin" | "signup" | "reset"
 let olChatSeen = 0; // 읽은 채팅 수
 let olChatRendered = 0;
 
@@ -52,16 +51,11 @@ function olEsc(s) {
         <span id="ol-google-label">Google로 로그인</span>
       </button>
       <div class="ol-divider"><span>또는 이메일</span></div>
-      <div class="ol-seg" role="tablist" aria-label="이메일 로그인 방식">
-        <button type="button" role="tab" data-action="olSetAuthMode" data-value="signin">로그인</button>
-        <button type="button" role="tab" data-action="olSetAuthMode" data-value="signup">회원가입</button>
-        <button type="button" role="tab" data-action="olSetAuthMode" data-value="reset">비밀번호 찾기</button>
-      </div>
       <form id="ol-email-form" class="ol-form" novalidate>
-        <label class="ol-field ol-only-signup"><span>대국자 이름</span><input id="ol-name" name="name" type="text" maxlength="40" autocomplete="nickname" placeholder="상대에게 보일 이름"></label>
         <label class="ol-field"><span>이메일</span><input id="ol-email" name="email" type="email" autocomplete="email" placeholder="you@example.com" required></label>
-        <label class="ol-field ol-no-reset"><span>비밀번호</span><input id="ol-password" name="password" type="password" autocomplete="current-password" minlength="6" placeholder="6자 이상"></label>
-        <button type="submit" id="ol-email-submit" class="ol-btn ol-primary">로그인</button>
+        <label class="ol-field"><span>대국자 이름 <small>(처음 로그인할 때만, 비우면 이메일 앞부분)</small></span><input id="ol-name" name="name" type="text" maxlength="40" autocomplete="nickname" placeholder="상대에게 보일 이름"></label>
+        <button type="submit" id="ol-email-submit" class="ol-btn ol-primary">로그인 메일 받기</button>
+        <p class="ol-hint">비밀번호가 없습니다. 메일의 승인 페이지에서 이 화면에 뜨는 숫자를 고르면 이 브라우저가 로그인됩니다. 휴대폰에서 승인해도 됩니다.</p>
         <p id="ol-auth-msg" class="ol-msg" role="status" aria-live="polite"></p>
       </form>
     </div>
@@ -69,9 +63,15 @@ function olEsc(s) {
     <div id="ol-auth-in" class="ol-block" hidden>
       <div class="ol-me">
         <span id="ol-avatar" class="ol-avatar" aria-hidden="true"></span>
-        <span class="ol-me-text"><b><span id="ol-me-name"></span> <span id="ol-me-badge" class="ol-chip"></span></b><small id="ol-me-email"></small></span>
+        <span class="ol-me-text"><b id="ol-me-name"></b><small id="ol-me-email"></small></span>
         <button type="button" class="ol-btn ol-small" data-action="olSignOut">로그아웃</button>
       </div>
+      <details id="ol-devices" class="ol-devices">
+        <summary>로그인한 기기 <span id="ol-devices-count"></span></summary>
+        <ul id="ol-devices-list" class="ol-devices-list"></ul>
+        <p class="ol-hint">모르는 기기가 있으면 아래 단추로 모두 로그아웃한 뒤 다시 로그인하세요. 브라우저·OS는 대략이고 IP·위치는 저장하지 않습니다.</p>
+      </details>
+      <p class="ol-signout-all"><button type="button" class="ol-link" data-action="olSignOutAll">모든 기기에서 로그아웃</button></p>
 
       <div id="ol-lobby">
         <h4 class="ol-h">방 만들기</h4>
@@ -82,7 +82,6 @@ function olEsc(s) {
           <label class="ol-field"><span>초 상차림</span><select id="ol-charim-cho">${charimOpts(0)}</select></label>
           <label class="ol-field"><span>한 상차림</span><select id="ol-charim-han">${charimOpts(0)}</select></label>
         </div>
-        <p id="ol-create-locked" class="ol-hint ol-hint-strong" hidden>이메일 인증을 마치면 방을 만들 수 있습니다. 초대 링크나 코드로 들어가는 것은 지금도 됩니다.</p>
         <button type="button" id="ol-create-btn" class="ol-btn ol-primary" data-action="olCreateRoomFromForm">방 만들고 초대 링크 받기</button>
         <h4 class="ol-h">초대 코드로 들어가기</h4>
         <form id="ol-join-form" class="ol-row">
@@ -194,21 +193,6 @@ function olRenderBackend() {
   if (g) g.textContent = olBackend.kind === "fake" ? "Google로 로그인 (가짜 사용자)" : "Google로 로그인";
 }
 
-function olRenderAuthMode() {
-  const form = olEl("ol-email-form");
-  if (!form) return;
-  form.dataset.mode = olAuthMode;
-  document.querySelectorAll("#ol-sec-online .ol-seg [data-value]").forEach(b => {
-    const on = b.dataset.value === olAuthMode;
-    b.classList.toggle("active", on);
-    b.setAttribute("aria-selected", on ? "true" : "false");
-  });
-  const pw = olEl("ol-password");
-  if (pw) pw.autocomplete = olAuthMode === "signup" ? "new-password" : "current-password";
-  const submit = olEl("ol-email-submit");
-  if (submit) submit.textContent = { signin: "로그인", signup: "가입하고 로그인", reset: "재설정 메일 보내기" }[olAuthMode];
-}
-
 function olRenderAuth() {
   const out = olEl("ol-auth-out");
   const inn = olEl("ol-auth-in");
@@ -225,14 +209,30 @@ function olRenderAuth() {
     olEl("ol-me-name").textContent = olUser.name;
     olEl("ol-me-email").textContent = olUser.email || "";
     olEl("ol-avatar").textContent = (olUser.name || "?").slice(0, 1);
-    const verified = olIsVerified();
-    const badge = olEl("ol-me-badge");
-    badge.textContent = verified ? "실제 사용자" : "인증 전";
-    badge.dataset.state = verified ? "ok" : "pending";
-    badge.title = verified ? "Google 로그인 또는 이메일 인증을 마친 사용자" : "이메일 인증 전: 초대받은 방 입장만 할 수 있습니다";
-    olEl("ol-create-locked").hidden = verified;
-    olEl("ol-create-btn").disabled = !verified;
   }
+}
+
+let olDevicesSeq = 0;
+
+/** "로그인한 기기" 목록 (서랍을 펼칠 때·로그인할 때 서버에서 읽음) */
+async function olRenderDevices() {
+  const list = olEl("ol-devices-list");
+  if (!list || !olUser) return;
+  const seq = ++olDevicesSeq;
+  let devices;
+  try {
+    devices = await olAuth.devices();
+  } catch (e) {
+    if (seq === olDevicesSeq) list.innerHTML = `<li class="ol-hint">기기 목록을 읽지 못했습니다: ${olEsc(olErrorText(e))}</li>`;
+    return;
+  }
+  if (seq !== olDevicesSeq) return;
+  const fmt = new Intl.DateTimeFormat("ko-KR", { year: "2-digit", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" });
+  olEl("ol-devices-count").textContent = devices.length ? `(${devices.length})` : "";
+  list.innerHTML = devices.length
+    ? devices.map(d => `<li><b>${olEsc(d.label)}</b>${d.current ? ' <span class="ol-devices-me">이 기기</span>' : ""}
+        <small>처음 ${olEsc(fmt.format(new Date(d.firstAt)))} · 마지막 ${olEsc(fmt.format(new Date(d.lastAt)))}</small></li>`).join("")
+    : '<li class="ol-hint">아직 기록된 기기가 없습니다.</li>';
 }
 
 function olSeatHtml(side) {
@@ -384,8 +384,13 @@ function olRender(what) {
     olRenderBackend();
     return;
   }
+  if (what === "devices") {
+    olRenderDevices();
+    return;
+  }
   if (what === "auth") {
     olRenderAuth();
+    olRenderDevices();
     olRenderRoom();
     return;
   }
@@ -408,12 +413,6 @@ function olSetAuthMsg(text, kind) {
   el.dataset.kind = kind || "";
 }
 
-function olSetAuthMode(mode) {
-  olAuthMode = ["signin", "signup", "reset"].includes(mode) ? mode : "signin";
-  olSetAuthMsg("");
-  olRenderAuthMode();
-}
-
 async function olGoogleSignIn() {
   if (!olBackend) return;
   olSetAuthMsg("Google 로그인 창을 여는 중…");
@@ -425,48 +424,23 @@ async function olGoogleSignIn() {
   }
 }
 
-async function olSubmitEmail(ev) {
-  ev.preventDefault();
-  if (!olBackend) return;
-  const email = olEl("ol-email").value.trim();
-  const pw = olEl("ol-password").value;
-  const name = olEl("ol-name").value.trim();
-  if (!email) {
-    olSetAuthMsg("이메일을 넣어 주세요.", "error");
-    return;
-  }
-  const btn = olEl("ol-email-submit");
-  btn.disabled = true;
-  try {
-    if (olAuthMode === "reset") {
-      await olAuth.reset(email);
-      olSetAuthMsg("비밀번호 재설정 메일을 보냈습니다. 메일함을 확인해 주세요.", "ok");
-    } else if (olAuthMode === "signup") {
-      if (!name) {
-        olSetAuthMsg("대국자 이름을 넣어 주세요.", "error");
-        return;
-      }
-      await olAuth.signUp(email, pw, name);
-      olSetAuthMsg("");
-      // 가입하면 바로 인증 코드를 보낸다 (online-verify.js)
-      if (typeof olVerifySend === "function") olVerifySend();
-    } else {
-      await olAuth.email(email, pw);
-      olSetAuthMsg("");
-    }
-    olEl("ol-password").value = "";
-  } catch (e) {
-    olSetAuthMsg(olErrorText(e), "error");
-  } finally {
-    btn.disabled = false;
-  }
-}
-
 async function olSignOut() {
   try {
     await olAuth.signOut();
   } catch (e) {
     olToast(`로그아웃하지 못했습니다: ${olErrorText(e)}`);
+  }
+}
+
+/** 이 계정으로 로그인한 모든 기기(이 기기 포함)에서 로그아웃. 다른 기기는 늦어도 1시간 안에 풀리고, 그 사이 데이터 접근은 보안 규칙이 막는다 */
+async function olSignOutAll() {
+  const ok = await olConfirm("모든 기기에서 로그아웃할까요?", "이 기기를 포함해 이 계정으로 로그인한 곳이 모두 로그아웃됩니다. 다른 기기의 대국 접근도 바로 막힙니다.", "모두 로그아웃", "warn");
+  if (!ok) return;
+  try {
+    await olAuth.signOutAll();
+    olToast("모든 기기에서 로그아웃했습니다.", 3000);
+  } catch (e) {
+    olToast(`로그아웃하지 못했습니다: ${olErrorText(e)}`, 3500);
   }
 }
 
@@ -553,8 +527,8 @@ function olUndoReject() {
 }
 
 window.olGoogleSignIn = olGoogleSignIn;
-window.olSetAuthMode = olSetAuthMode;
 window.olSignOut = olSignOut;
+window.olSignOutAll = olSignOutAll;
 window.olCreateRoomFromForm = olCreateRoomFromForm;
 window.olCopyInvite = olCopyInvite;
 window.olShareInvite = olShareInvite;
@@ -567,12 +541,13 @@ window.olUndoReject = olUndoReject;
 document.addEventListener("DOMContentLoaded", () => {
   olOnChange(olRender);
   olRenderBackend();
-  olRenderAuthMode();
   olRenderAuth();
   olRenderRoom();
 
-  olEl("ol-email-form").addEventListener("submit", olSubmitEmail);
   olEl("ol-join-form").addEventListener("submit", olJoinFromForm);
+  olEl("ol-devices").addEventListener("toggle", ev => {
+    if (ev.target.open) olRenderDevices();
+  });
   olEl("ol-chat-form").addEventListener("submit", ev => {
     ev.preventDefault();
     const input = olEl("ol-chat-input");

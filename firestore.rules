@@ -14,27 +14,34 @@ rules_version = '2';
 //  - 서버는 장기 규칙(기물 움직임)을 검사하지 않는다. 받는 쪽 앱이 기존 규칙 검사로 거부한다.
 //    여기서는 "누가·언제·몇 번째 수를" 쓰는지만 지킨다.
 //  - 시간패·외통 결과는 양쪽 앱이 보내는 값을 믿는다 (규칙으로 시계를 검증할 수 없음).
-//  - "인증된 사용자" = Google 로그인 또는 이메일 숫자 코드 인증을 마친 사용자 (Cloud Functions verifyEmailCode가
-//    emailVerified=true로 바꿈). 인증 전 계정은 초대받은 방 입장(과 그 방 안의 대국·채팅)만 할 수 있고 방을 만들 수 없다.
-//  - games/janggi/emailCodes/{uid}(코드 해시·보내기 기록)는 Cloud Functions(Admin SDK)만 읽고 쓴다.
+//  - 로그인 = Google 로그인 또는 이메일 승인형 로그인(Cloud Functions가 이메일 인증된 사용자로 custom token을 내줌).
+//    두 방식 모두 이메일이 확인된 사용자이므로 "인증 전 사용자" 구분은 없다. 그래도 규칙은 email_verified를 확인한다
+//    (콘솔에서 다른 로그인 방식이 켜져 있어도 확인 안 된 계정은 못 쓰게).
+//  - 모든 기기에서 로그아웃: Cloud Functions revokeAllSessions가 games/janggi/users/{uid}.revokedAt(초)을 남긴다.
+//    그 전에 로그인한 ID 토큰(auth_time < revokedAt)은 남은 유효 시간(최대 1시간) 동안에도 여기서 막힌다.
+//    이 확인 때문에 요청마다 users 문서 읽기가 한 번 더 든다 (같은 요청 안에서는 한 번만 셈).
+//  - games/janggi/loginRequests·loginEmails·loginIps(로그인 요청·남용 방지 기록)는 Cloud Functions(Admin SDK)만 읽고 쓴다.
 // =====================================================================
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    function signedIn() {
-      return request.auth != null;
-    }
-
     function me() {
       return request.auth.uid;
     }
 
-    // Google 로그인이거나 이메일 인증을 마친 "실제 사용자"
-    function verified() {
+    // 모든 기기에서 로그아웃한 뒤의 옛 토큰이 아님
+    function notRevoked() {
+      let u = /databases/$(database)/documents/games/janggi/users/$(request.auth.uid);
+      return !exists(u) || request.auth.token.auth_time >= get(u).data.get('revokedAt', 0);
+    }
+
+    // 로그인한 사용자: 이메일이 확인되었고(Google·이메일 승인형 모두 해당) 로그아웃 처리된 토큰이 아님
+    function signedIn() {
       return request.auth != null
         && (request.auth.token.email_verified == true
-            || request.auth.token.firebase.sign_in_provider == 'google.com');
+            || request.auth.token.firebase.sign_in_provider == 'google.com')
+        && notRevoked();
     }
 
     function sideOf(ply) {
@@ -86,8 +93,8 @@ service cloud.firestore {
       allow get: if signedIn() && (resource == null || me() in resource.data.members || resource.data.status == 'waiting');
       allow list: if false;
 
-      // 방 만들기: 인증된 사용자만. 내가 방장이고 한 자리에만 앉는다
-      allow create: if verified()
+      // 방 만들기: 내가 방장이고 한 자리에만 앉는다
+      allow create: if signedIn()
         && roomId.matches('^[A-Z0-9]{6,16}$')
         && request.resource.data.app == 'janggi'
         && request.resource.data.hostUid == me()
@@ -228,14 +235,25 @@ service cloud.firestore {
       }
     }
 
-    // ----- 사용자 등록 (verifyEmailCode가 씀) -----
+    // ----- 사용자 (claimEmailLogin·revokeAllSessions·noteLogin이 씀). 로그인한 기기 목록(devices)도 여기 → 본인만 읽기 -----
     match /games/janggi/users/{uid} {
-      allow read: if signedIn() && me() == uid;
+      allow read: if request.auth != null && me() == uid;
       allow write: if false;
     }
 
-    // ----- 인증 코드 기록: 클라이언트는 읽기·쓰기 모두 금지 (Cloud Functions의 Admin SDK는 규칙을 거치지 않음) -----
-    match /games/janggi/emailCodes/{uid} {
+    // ----- 로그인 요청·남용 방지 기록: 클라이언트는 읽기·쓰기 모두 금지 (Cloud Functions의 Admin SDK는 규칙을 거치지 않음) -----
+    // 승인 여부는 요청자에게도 직접 보이지 않는다. 요청자는 claimSecret을 들고 claimEmailLogin으로만 묻는다.
+    match /games/janggi/loginRequests/{id} {
+      allow read, write: if false;
+    }
+    match /games/janggi/loginEmails/{key} {
+      allow read, write: if false;
+    }
+    match /games/janggi/loginIps/{key} {
+      allow read, write: if false;
+    }
+    // 새 기기 알림 메일의 "모든 기기에서 로그아웃" 링크 (토큰 해시, 7일, 한 번만)
+    match /games/janggi/revokeLinks/{id} {
       allow read, write: if false;
     }
 

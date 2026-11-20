@@ -1,102 +1,97 @@
 /**
- * @fileoverview sendEmailCode·verifyEmailCode 본체. Firebase 패키지에 기대지 않아 Node 테스트로 바로 돌릴 수 있다.
- * index.js가 Firestore·Auth·메일·HttpsError를 넣어 준다.
- *  - 코드 기록: games/janggi/emailCodes/{uid}   (클라이언트는 규칙으로 읽기·쓰기 금지)
- *  - 사용자 등록: games/janggi/users/{uid}      (본인만 읽기, 쓰기는 이 함수만)
+ * @fileoverview 이메일 승인형 로그인 callable 본체. Firebase 패키지에 기대지 않아 Node 테스트로 바로 돌릴 수 있다.
+ * 흐름·규칙은 functions/email-login-core.js에 있고, 여기서는 Node crypto·Admin Auth·요청 정보(IP·User-Agent)를 이어 준다.
+ * index.js가 Firestore 저장소·Admin Auth·메일·HttpsError를 넣어 준다.
+ *  - 로그인 요청: games/janggi/loginRequests/{id}   (클라이언트는 규칙으로 읽기·쓰기 금지)
+ *  - 남용 방지 기록: games/janggi/loginEmails/{이메일 해시}, games/janggi/loginIps/{IP 해시}   (클라이언트 금지)
+ *  - 사용자: games/janggi/users/{uid}   (본인만 읽기, 쓰기는 이 함수만. revokedAt = 모든 기기 로그아웃 시각,
+ *            devices = 로그인한 기기 {기기 ID 해시: {label, firstAt, lastAt}}, notify = 알림 메일 횟수)
+ *  - 알림 메일의 로그아웃 링크: games/janggi/revokeLinks/{id}   (토큰 해시만, 7일, 한 번만. 클라이언트 금지)
  * @module functions/handlers
  */
 const crypto = require("node:crypto");
-const core = require("./email-code-core");
+const core = require("./email-login-core");
 
-const ROOT = "games/janggi";
+/**
+ * Admin Auth로 사용자 찾기·만들기·토큰·로그아웃
+ * @param {import("firebase-admin/auth").Auth} auth
+ */
+function adminUsers(auth) {
+  return {
+    async findOrCreate(email, name) {
+      let u = null;
+      try {
+        u = await auth.getUserByEmail(email);
+      } catch (e) {
+        if (!e || e.code !== "auth/user-not-found") throw e;
+      }
+      if (!u) {
+        const made = await auth.createUser({ email, emailVerified: true, displayName: name || undefined });
+        return { uid: made.uid, name: made.displayName || name, isNew: true };
+      }
+      if (!u.emailVerified) {
+        const patch = { emailVerified: true };
+        // 인증 안 된 비밀번호 계정(남이 이 이메일로 먼저 만들었을 수 있음)은 비밀번호를 무작위로 바꿔 막는다
+        if (u.providerData.some(p => p.providerId === "password")) patch.password = crypto.randomBytes(24).toString("base64url");
+        await auth.updateUser(u.uid, patch);
+      }
+      return { uid: u.uid, name: u.displayName || name, isNew: false };
+    },
+    // 이메일 인증 여부는 사용자 기록(emailVerified=true)에 두므로 ID 토큰에 email_verified=true가 들어간다
+    token: uid => auth.createCustomToken(uid),
+    async revoke(uid) {
+      await auth.revokeRefreshTokens(uid);
+      const u = await auth.getUser(uid);
+      return Math.floor(new Date(u.tokensValidAfterTime).getTime() / 1000);
+    }
+  };
+}
 
 /**
  * @param {Object} deps
- * @param {{runTransaction: Function, set: Function}} deps.store - 경로 문자열로 읽고 쓰는 저장소
- * @param {{updateUser: Function}} deps.auth
+ * @param {{tx: Function, merge: Function}} deps.store - email-login-core.js가 쓰는 저장소
+ * @param {{findOrCreate: Function, token: Function, revoke: Function}} deps.users - adminUsers(auth) 또는 시험용
  * @param {{send: Function}} deps.mailer
  * @param {(code: string, message: string, details?: Object) => Error} deps.fail - HttpsError 만들기
+ * @param {string[]} deps.allowedOrigins - 승인 링크에 쓸 수 있는 배포 주소 (localhost는 늘 허용)
  * @param {() => number} [deps.now]
- * @param {() => string} [deps.randomCode]
  * @param {{info: Function, error: Function}} [deps.log]
  */
 function makeHandlers(deps) {
-  const now = deps.now || (() => Date.now());
-  const randomCode = deps.randomCode || (() => String(crypto.randomInt(0, 1000000)).padStart(6, "0"));
-  const randomSalt = () => crypto.randomBytes(16).toString("hex");
-  const hash = async s => crypto.createHash("sha256").update(s).digest("hex");
-  const log = deps.log || console;
-  const fail = deps.fail;
+  const login = core.makeEmailLogin({
+    store: deps.store,
+    users: deps.users,
+    mailer: deps.mailer,
+    fail: deps.fail,
+    allowedOrigins: deps.allowedOrigins,
+    log: deps.log || console,
+    now: deps.now || (() => Date.now()),
+    randomId: deps.randomId || (n => crypto.randomBytes(n).toString("base64url")),
+    randomInt: deps.randomInt || (max => crypto.randomInt(0, max)),
+    hash: async s => crypto.createHash("sha256").update(s).digest("hex")
+  });
 
-  function who(request) {
-    const a = request && request.auth;
-    if (!a || !a.uid) throw fail("unauthenticated", "로그인이 필요합니다.");
-    const token = a.token || {};
-    if (!token.email) throw fail("failed-precondition", "이메일이 없는 계정입니다.");
-    const provider = token.firebase && token.firebase.sign_in_provider;
-    return { uid: a.uid, email: String(token.email).toLowerCase(), name: token.name || "", verified: token.email_verified === true, provider };
+  function ctxOf(request) {
+    const raw = (request && request.rawRequest) || {};
+    const headers = raw.headers || {};
+    return {
+      auth: request && request.auth,
+      ip: raw.ip || "",
+      ua: headers["user-agent"] || ""
+    };
   }
 
-  const codePath = uid => `${ROOT}/emailCodes/${uid}`;
-  const userPath = uid => `${ROOT}/users/${uid}`;
-
-  async function sendEmailCode(request) {
-    const u = who(request);
-    if (u.verified) return { alreadyVerified: true };
-    if (u.provider && u.provider !== "password") throw fail("failed-precondition", "이메일·비밀번호 계정만 코드 인증을 합니다.");
-    let issued = null;
-    let before = null;
-    await deps.store.runTransaction(async tx => {
-      before = await tx.get(codePath(u.uid));
-      const res = await core.issueCode(before, u, { now: now(), randomCode, randomSalt, hash });
-      if (!res.ok) {
-        issued = res;
-        return;
-      }
-      tx.set(codePath(u.uid), res.record);
-      issued = res;
-    });
-    if (!issued.ok) {
-      throw fail("resource-exhausted", "지금은 코드를 보낼 수 없습니다.", { reason: issued.reason, retryAfterMs: issued.retryAfterMs });
-    }
-    try {
-      await deps.mailer.send({ to: u.email, code: issued.code, ttlMinutes: core.LIMITS.codeTtlMs / 60000 });
-    } catch (e) {
-      log.error("[sendEmailCode] 메일 발송 실패", e && e.message);
-      // 보내지 못했으면 방금 만든 코드를 없던 일로 (다시 보내기 제한도 풀림)
-      await deps.store.set(codePath(u.uid), before || { codeHash: null, lastSentAt: 0 });
-      throw fail("unavailable", "인증 메일을 보내지 못했습니다. 잠시 뒤 다시 해 주세요.");
-    }
-    return { expiresAt: issued.expiresAt, resendAt: issued.resendAt, dailyLeft: issued.dailyLeft };
-  }
-
-  async function verifyEmailCode(request) {
-    const u = who(request);
-    if (u.verified) return { ok: true, alreadyVerified: true };
-    const input = request.data && request.data.code;
-    let result = null;
-    await deps.store.runTransaction(async tx => {
-      const rec = await tx.get(codePath(u.uid));
-      result = await core.checkCode(rec, u, input, { now: now(), hash });
-      if (result.record) tx.set(codePath(u.uid), result.record);
-    });
-    if (!result.ok) {
-      return { ok: false, reason: result.reason, attemptsLeft: result.attemptsLeft, retryAfterMs: result.retryAfterMs };
-    }
-    await deps.auth.updateUser(u.uid, { emailVerified: true });
-    await deps.store.set(userPath(u.uid), {
-      uid: u.uid,
-      email: u.email,
-      name: u.name,
-      provider: "password",
-      verifiedAt: now(),
-      app: "janggi"
-    });
-    log.info("[verifyEmailCode] 인증 완료", u.uid);
-    return { ok: true };
-  }
-
-  return { sendEmailCode, verifyEmailCode };
+  const wrap = fn => request => fn(ctxOf(request), (request && request.data) || {});
+  return {
+    startEmailLogin: wrap(login.start),
+    getEmailLogin: wrap(login.info),
+    approveEmailLogin: wrap(login.approve),
+    denyEmailLogin: wrap(login.deny),
+    claimEmailLogin: wrap(login.claim),
+    revokeAllSessions: wrap(login.revoke),
+    noteLogin: wrap(login.noteLogin),
+    revokeByLink: wrap(login.revokeByLink)
+  };
 }
 
-module.exports = { makeHandlers, ROOT };
+module.exports = { makeHandlers, adminUsers, ROOT: core.ROOT };

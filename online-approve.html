@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <meta name="referrer" content="no-referrer">
+  <title>웹장기 로그인 승인</title>
+  <!--
+    이메일 "다른 기기 승인형" 로그인의 승인 페이지 (승인 메일의 링크가 연다).
+    주소: online-approve.html#req=<요청 id>&t=<승인 토큰>   (조각(#)이라 서버 기록·Referer로 새지 않는다)
+    - 페이지를 열기만 해서는 아무것도 바뀌지 않는다 (메일 보안 검사기가 링크를 미리 열어 보기 때문).
+      요청 시각·기기와 숫자 보기 3개만 읽어 온다 (callable getEmailLogin).
+    - 로그인하려는 화면에 뜬 숫자를 골라 [승인]을 누르면 approveEmailLogin. 숫자가 틀리면 그 요청은 거부·폐기된다.
+    - [내가 요청한 게 아님]은 denyEmailLogin.
+    - 승인하면 같은 브라우저의 원래 탭에 BroadcastChannel("janggi-online-login")로 알린다 (다른 기기면 그 화면이 3초 안에 알아챔).
+    - 백엔드는 module/firebase-config.js의 JANGGI_ONLINE_BACKEND, 주소 ?backend=fake 로 가짜 백엔드(개발용).
+    - 로그인하지 않으므로 Google 팝업 같은 창 간 통신이 없다 → coi-sw.js 예외가 필요 없다 (격리돼도 동작).
+  -->
+  <style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      background: #0f172a;
+      color: #f8fafc;
+      font-family: system-ui, -apple-system, "Segoe UI", "Malgun Gothic", sans-serif;
+    }
+    main { width: 100%; max-width: 380px; }
+    h1 { font-size: 19px; margin: 0 0 6px; text-align: center; }
+    .sub { margin: 0 0 18px; font-size: 13px; color: #94a3b8; text-align: center; }
+    dl { margin: 0 0 18px; padding: 12px 14px; border-radius: 10px; background: #1e293b; font-size: 14px; }
+    dl div { display: flex; gap: 10px; padding: 3px 0; }
+    dt { flex: 0 0 74px; color: #94a3b8; }
+    dd { margin: 0; overflow-wrap: anywhere; }
+    .q { margin: 0 0 10px; font-size: 15px; font-weight: 700; text-align: center; }
+    .picks { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 14px; }
+    .picks button {
+      min-height: 64px;
+      border: 2px solid #334155;
+      border-radius: 12px;
+      background: #1e293b;
+      color: #f8fafc;
+      font: inherit;
+      font-size: 28px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+    .picks button[aria-pressed="true"] { border-color: #60a5fa; background: #1d4ed8; }
+    .act { display: grid; gap: 8px; }
+    .act button {
+      min-height: 46px;
+      border: none;
+      border-radius: 10px;
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    #approve { background: #2563eb; color: #fff; }
+    #deny { background: transparent; color: #fda4af; border: 1px solid #7f1d1d; }
+    button:disabled { opacity: 0.45; cursor: default; }
+    #msg { margin: 14px 0 0; min-height: 1.4em; font-size: 14px; line-height: 1.55; text-align: center; }
+    #msg.error { color: #fda4af; }
+    #msg.ok { color: #86efac; font-size: 16px; font-weight: 700; }
+    .note { margin: 18px 0 0; font-size: 12px; line-height: 1.55; color: #64748b; text-align: center; }
+    [hidden] { display: none !important; }
+  </style>
+  <script src="module/firebase-config.js" charset="UTF-8"></script>
+</head>
+<body>
+  <main>
+    <h1>웹장기 로그인 승인</h1>
+    <p class="sub" id="who">요청을 불러오는 중…</p>
+    <div id="panel" hidden>
+      <dl>
+        <div><dt>요청 시각</dt><dd id="when"></dd></div>
+        <div><dt>요청 기기</dt><dd id="device"></dd></div>
+        <div><dt>남은 시간</dt><dd id="left"></dd></div>
+      </dl>
+      <p class="q">로그인하려는 화면에 보이는 숫자를 고르세요</p>
+      <div class="picks" id="picks" role="group" aria-label="확인 숫자 보기"></div>
+      <div class="act">
+        <button type="button" id="approve" disabled>승인</button>
+        <button type="button" id="deny">내가 요청한 게 아님</button>
+      </div>
+    </div>
+    <p id="msg" role="status" aria-live="polite"></p>
+    <p class="note" id="note">숫자를 틀리게 고르면 이 요청은 거부됩니다. 다른 사람이 내 이메일로 로그인하려는 것을 막기 위해서입니다.</p>
+  </main>
+
+  <script src="functions/email-login-core.js" charset="UTF-8"></script>
+  <script src="module/online/fake-backend.js" charset="UTF-8"></script>
+  <script type="module">
+    const $ = id => document.getElementById(id);
+    // 같은 탭에서 다른 승인 링크를 열면(# 부분만 바뀜) 그 요청을 새로 읽는다
+    window.addEventListener("hashchange", () => window.location.reload());
+    const hash = new URLSearchParams(window.location.hash.slice(1));
+    const req = hash.get("req") || "";
+    const t = hash.get("t") || "";
+    const say = (text, kind) => {
+      $("msg").textContent = text;
+      $("msg").className = kind || "";
+    };
+    const REASON = {
+      "not-found": "이 링크는 더 이상 쓸 수 없습니다 (이미 쓰였거나 잘못된 링크).",
+      expired: "10분이 지나 요청이 만료되었습니다. 로그인 화면에서 다시 받아 주세요.",
+      "wrong-number": "숫자가 맞지 않아 이 요청을 거부했습니다. 직접 요청한 것이라면 로그인 화면에서 다시 받아 주세요.",
+      "already-approved": "이미 승인된 요청입니다. 원래 화면으로 돌아가세요.",
+      "already-denied": "이미 거부된 요청입니다."
+    };
+    const STATUS = {
+      approved: REASON["already-approved"],
+      claimed: REASON["already-approved"],
+      denied: REASON["already-denied"],
+      expired: REASON.expired
+    };
+
+    async function makeApi() {
+      const q = new URLSearchParams(window.location.search).get("backend");
+      const kind = q === "fake" || q === "firebase" ? q : window.JANGGI_ONLINE_BACKEND;
+      if (kind === "fake") return window.OnlineFakeBackend.approvePage;
+      const base = `https://www.gstatic.com/firebasejs/${window.JANGGI_FIREBASE_SDK}`;
+      const { initializeApp } = await import(`${base}/firebase-app.js`);
+      const { getFunctions, httpsCallable } = await import(`${base}/firebase-functions.js`);
+      const fns = getFunctions(initializeApp(window.JANGGI_FIREBASE_CONFIG), "asia-northeast3");
+      const call = name => async data => (await httpsCallable(fns, name)(data)).data;
+      const info = call("getEmailLogin");
+      const approve = call("approveEmailLogin");
+      const deny = call("denyEmailLogin");
+      return {
+        info: (r, tk) => info({ req: r, t: tk }),
+        approve: (r, tk, pick) => approve({ req: r, t: tk, pick }),
+        deny: (r, tk) => deny({ req: r, t: tk })
+      };
+    }
+
+    function finish(text, kind) {
+      $("panel").hidden = true;
+      $("note").hidden = true;
+      say(text, kind);
+    }
+
+    function tellOpener() {
+      try {
+        const chan = new BroadcastChannel("janggi-online-login");
+        chan.postMessage({ type: "approved", req });
+        setTimeout(() => chan.close(), 500);
+      } catch (e) {
+        // 다른 기기라면 그 화면이 스스로 알아챈다
+      }
+    }
+
+    try {
+      if (!req || !t) {
+        $("who").textContent = "";
+        finish(REASON["not-found"], "error");
+      } else {
+        const api = await makeApi();
+        const info = await api.info(req, t);
+        if (!info.ok) {
+          $("who").textContent = "";
+          finish(REASON[info.reason] || REASON["not-found"], "error");
+        } else {
+          $("who").textContent = `${info.email} 로그인 요청`;
+          if (info.status !== "pending") {
+            finish(STATUS[info.status] || REASON["not-found"], info.status === "approved" ? "" : "error");
+          } else {
+            const fmt = new Intl.DateTimeFormat("ko-KR", { month: "long", day: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" });
+            $("when").textContent = fmt.format(new Date(info.createdAt));
+            $("device").textContent = info.device;
+            const left = () => {
+              const s = Math.max(0, Math.ceil((info.expiresAt - Date.now()) / 1000));
+              $("left").textContent = s ? `${Math.floor(s / 60)}분 ${s % 60}초` : "만료됨";
+              if (!s) {
+                clearInterval(leftTimer);
+                if (!$("panel").hidden) finish(REASON.expired, "error");
+              }
+            };
+            const leftTimer = setInterval(left, 1000);
+            left();
+            let pick = null;
+            info.choices.forEach(n => {
+              const b = document.createElement("button");
+              b.type = "button";
+              b.textContent = String(n);
+              b.setAttribute("aria-pressed", "false");
+              b.addEventListener("click", () => {
+                pick = n;
+                $("picks").querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", x === b ? "true" : "false"));
+                $("approve").disabled = false;
+              });
+              $("picks").appendChild(b);
+            });
+            $("panel").hidden = false;
+            const busy = on => {
+              $("approve").disabled = on || pick == null;
+              $("deny").disabled = on;
+            };
+            $("approve").addEventListener("click", async () => {
+              if (pick == null) return;
+              busy(true);
+              say("승인하는 중…");
+              try {
+                const r = await api.approve(req, t, pick);
+                clearInterval(leftTimer);
+                if (r.ok) {
+                  tellOpener();
+                  finish("승인했습니다. 로그인을 요청한 원래 화면으로 돌아가세요. 이 창은 닫아도 됩니다.", "ok");
+                } else {
+                  finish(REASON[r.reason] || REASON["not-found"], "error");
+                }
+              } catch (e) {
+                console.error("[online-approve] 승인 실패:", e);
+                say("서버에 닿지 않습니다. 잠시 뒤 다시 눌러 주세요.", "error");
+                busy(false);
+              }
+            });
+            $("deny").addEventListener("click", async () => {
+              busy(true);
+              try {
+                await api.deny(req, t);
+                clearInterval(leftTimer);
+                finish("요청을 거부했습니다. 아무 기기도 로그인되지 않습니다. 계속 이런 메일이 오면 무시해도 됩니다.", "ok");
+              } catch (e) {
+                console.error("[online-approve] 거부 실패:", e);
+                say("서버에 닿지 않습니다. 잠시 뒤 다시 눌러 주세요.", "error");
+                busy(false);
+              }
+            });
+          }
+        }
+      }
+    } catch (e) {
+      console.error("[online-approve] 요청을 불러오지 못했습니다:", e);
+      $("who").textContent = "";
+      finish("요청을 불러오지 못했습니다. 인터넷 연결을 확인하고 새로고침해 주세요.", "error");
+    }
+  </script>
+</body>
+</html>

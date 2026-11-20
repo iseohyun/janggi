@@ -222,41 +222,16 @@
   background: var(--color-border);
 }
 
-/* 이메일 로그인·회원가입·찾기 */
-.ol-seg {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  padding: 3px;
-  border-radius: var(--radius-sm);
-  background: rgba(0, 0, 0, 0.25);
-}
-
-.ol-seg button {
-  min-height: 30px;
-  border: none;
-  border-radius: 4px;
-  background: none;
-  color: var(--color-text-secondary);
-  font: inherit;
-  font-size: 12px;
-  cursor: pointer;
-}
-
-.ol-seg button.active {
-  background: var(--color-bg-hover);
-  color: var(--color-text-primary);
-  font-weight: 700;
-}
-
+/* 이메일 승인형 로그인 (online-email-login.js) */
 .ol-form {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
-.ol-form:not([data-mode="signup"]) .ol-only-signup,
-.ol-form[data-mode="reset"] .ol-no-reset {
-  display: none;
+.ol-field small {
+  font-weight: 400;
+  color: var(--color-text-muted, var(--color-text-secondary));
 }
 
 .ol-msg {
@@ -559,61 +534,103 @@ html.ol-eval-off #hg-eval-row {
   opacity: 0.45;
 }
 
-/* ===== 이메일 숫자 코드 인증 (online-verify.js) ===== */
-.ol-chip {
-  display: inline-block;
-  margin-left: 4px;
-  padding: 1px 7px;
-  border-radius: 999px;
-  font-size: 10.5px;
-  font-weight: 700;
-  vertical-align: 1px;
-}
-
-.ol-chip[data-state="ok"] {
-  background: rgba(34, 197, 94, 0.16);
-  color: #86efac;
-}
-
-.ol-chip[data-state="pending"] {
-  background: rgba(245, 158, 11, 0.16);
-  color: #fcd34d;
-}
-
-.ol-verify {
+/* ===== 이메일 승인 기다리기 (online-email-login.js) ===== */
+.ol-email-wait {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
   padding: 12px;
   border-radius: var(--radius-md);
-  border: 1px solid rgba(245, 158, 11, 0.4);
-  background: rgba(245, 158, 11, 0.07);
+  border: 1px solid rgba(96, 165, 250, 0.45);
+  background: rgba(37, 99, 235, 0.08);
 }
 
-.ol-verify-title {
+.ol-email-wait p {
   margin: 0;
-  font-weight: 800;
-  color: #fde68a;
 }
 
-#ol-code {
-  font-size: 18px;
+.ol-email-wait-title {
   font-weight: 800;
-  letter-spacing: 0.3em;
+  color: #bfdbfe;
+}
+
+.ol-email-number {
+  padding: 4px 0;
+  font-size: 44px;
+  font-weight: 900;
+  line-height: 1.1;
+  letter-spacing: 0.08em;
   text-align: center;
   font-variant-numeric: tabular-nums;
+  color: #f8fafc;
 }
 
-.ol-verify-meta {
-  justify-content: space-between;
-}
-
-.ol-code-timer {
+.ol-email-timer {
   font-size: 12px;
+  text-align: center;
   color: var(--color-text-secondary);
   font-variant-numeric: tabular-nums;
 }
 
-.ol-code-timer[data-state="live"] {
-  color: #fcd34d;
+.ol-email-wait .ol-row {
+  justify-content: center;
+}
+
+.ol-signout-all {
+  margin: -4px 0 0;
+  text-align: right;
+}
+
+.ol-link {
+  padding: 2px 0;
+  border: none;
+  background: none;
+  color: var(--color-text-secondary);
+  font: inherit;
+  font-size: 11.5px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.ol-link:hover {
+  color: var(--color-text-primary);
+}
+
+/* 로그인한 기기 (online-ui.js olRenderDevices) */
+.ol-devices {
+  font-size: 12px;
+}
+
+.ol-devices summary {
+  cursor: pointer;
+  color: var(--color-text-secondary);
+}
+
+.ol-devices-list {
+  margin: 6px 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ol-devices-list li {
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.ol-devices-list small {
+  display: block;
+  color: var(--color-text-secondary);
+}
+
+.ol-devices-me {
+  padding: 0 6px;
+  border-radius: 999px;
+  background: rgba(34, 197, 94, 0.16);
+  color: #86efac;
+  font-size: 10.5px;
+  font-weight: 700;
 }

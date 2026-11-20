@@ -1,7 +1,7 @@
 {
   "name": "janggi-functions",
   "private": true,
-  "description": "웹장기 온라인 대국 Cloud Functions (이메일 숫자 코드 인증)",
+  "description": "웹장기 온라인 대국 Cloud Functions (이메일 승인형 로그인)",
   "main": "index.js",
   "engines": {
     "node": "22"

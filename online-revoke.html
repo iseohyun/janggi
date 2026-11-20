@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <meta name="referrer" content="no-referrer">
+  <title>웹장기 모든 기기에서 로그아웃</title>
+  <!--
+    새 기기 로그인 알림 메일의 "모든 기기에서 로그아웃" 단추가 여는 페이지.
+    주소: online-revoke.html#id=<링크 id>&t=<토큰>   (조각(#)이라 서버 기록·Referer로 새지 않는다)
+    - 페이지를 열기만 해서는 아무것도 하지 않는다 (서버를 부르지도 않음). 메일 보안 검사기가 링크를 미리 열어 보기 때문.
+    - [모든 기기에서 로그아웃]을 누르면 callable revokeByLink → revokeRefreshTokens + users/{uid}.revokedAt.
+      링크는 7일 동안 한 번만 쓸 수 있다 (functions/email-login-core.js).
+    - 백엔드는 module/firebase-config.js의 JANGGI_ONLINE_BACKEND, 주소 ?backend=fake 로 가짜 백엔드(개발용).
+    - 로그인하지 않으므로 coi-sw.js 예외가 필요 없다.
+  -->
+  <style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      background: #0f172a;
+      color: #f8fafc;
+      font-family: system-ui, -apple-system, "Segoe UI", "Malgun Gothic", sans-serif;
+    }
+    main { width: 100%; max-width: 380px; text-align: center; }
+    h1 { font-size: 19px; margin: 0 0 10px; }
+    p { margin: 0 0 16px; font-size: 14px; line-height: 1.6; color: #cbd5e1; }
+    button {
+      width: 100%;
+      min-height: 48px;
+      border: none;
+      border-radius: 10px;
+      background: #b91c1c;
+      color: #fff;
+      font: inherit;
+      font-weight: 800;
+      cursor: pointer;
+    }
+    button:disabled { opacity: 0.45; cursor: default; }
+    #msg { margin: 14px 0 0; min-height: 1.4em; font-size: 14px; }
+    #msg.error { color: #fda4af; }
+    #msg.ok { color: #86efac; font-size: 16px; font-weight: 700; }
+    .note { margin-top: 18px; font-size: 12px; color: #64748b; }
+    [hidden] { display: none !important; }
+  </style>
+  <script src="module/firebase-config.js" charset="UTF-8"></script>
+</head>
+<body>
+  <main>
+    <h1>모든 기기에서 로그아웃</h1>
+    <div id="panel">
+      <p>모르는 기기에서 웹장기에 로그인했다면 아래 단추를 누르세요. 이 계정으로 로그인한 <b>모든 기기</b>가 로그아웃되고,
+        이미 열린 화면도 대국·채팅에 접근할 수 없게 됩니다.</p>
+      <button type="button" id="go">모든 기기에서 로그아웃</button>
+    </div>
+    <p id="msg" role="status" aria-live="polite"></p>
+    <p class="note" id="note">로그아웃한 뒤에는 본인 기기에서 다시 로그인하면 됩니다. 이 링크는 한 번만 쓸 수 있습니다.</p>
+  </main>
+
+  <script src="functions/email-login-core.js" charset="UTF-8"></script>
+  <script src="module/online/fake-backend.js" charset="UTF-8"></script>
+  <script type="module">
+    const $ = id => document.getElementById(id);
+    window.addEventListener("hashchange", () => window.location.reload());
+    const hash = new URLSearchParams(window.location.hash.slice(1));
+    const id = hash.get("id") || "";
+    const t = hash.get("t") || "";
+    const say = (text, kind) => {
+      $("msg").textContent = text;
+      $("msg").className = kind || "";
+    };
+    const REASON = {
+      "not-found": "이 링크는 쓸 수 없습니다 (잘못된 링크).",
+      used: "이미 쓰인 링크입니다. 그때 모든 기기에서 로그아웃되었습니다.",
+      expired: "7일이 지나 링크가 만료되었습니다. 웹장기에 로그인해 [모든 기기에서 로그아웃]을 누르세요."
+    };
+    const finish = (text, kind) => {
+      $("panel").hidden = true;
+      $("note").hidden = kind !== "ok";
+      say(text, kind);
+    };
+
+    async function revokeCall() {
+      const q = new URLSearchParams(window.location.search).get("backend");
+      const kind = q === "fake" || q === "firebase" ? q : window.JANGGI_ONLINE_BACKEND;
+      if (kind === "fake") return window.OnlineFakeBackend.approvePage.revokeByLink(id, t);
+      const base = `https://www.gstatic.com/firebasejs/${window.JANGGI_FIREBASE_SDK}`;
+      const { initializeApp } = await import(`${base}/firebase-app.js`);
+      const { getFunctions, httpsCallable } = await import(`${base}/firebase-functions.js`);
+      const fns = getFunctions(initializeApp(window.JANGGI_FIREBASE_CONFIG), "asia-northeast3");
+      return (await httpsCallable(fns, "revokeByLink")({ id, t })).data;
+    }
+
+    if (!id || !t) {
+      finish(REASON["not-found"], "error");
+    } else {
+      $("go").addEventListener("click", async () => {
+        $("go").disabled = true;
+        say("로그아웃하는 중…");
+        try {
+          const r = await revokeCall();
+          if (r.ok) finish("모든 기기에서 로그아웃했습니다. 본인 기기에서 다시 로그인하세요.", "ok");
+          else finish(REASON[r.reason] || REASON["not-found"], "error");
+        } catch (e) {
+          console.error("[online-revoke] 실패:", e);
+          say("서버에 닿지 않습니다. 잠시 뒤 다시 눌러 주세요.", "error");
+          $("go").disabled = false;
+        }
+      });
+    }
+  </script>
+</body>
+</html>

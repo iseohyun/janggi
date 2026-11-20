@@ -6,10 +6,12 @@
  *  - 이 페이지는 COOP: same-origin이라 Google 팝업이 이 창과 이야기할 수 없고, 인증 iframe도 COEP에 막힌다.
  *    그래서 Google 로그인은 격리하지 않는 도우미 창(online-auth.html, coi-sw.js가 헤더를 붙이지 않음)에서 하고,
  *    로그인 정보는 같은 출처의 IndexedDB를 거쳐 이 창으로 넘어온다. 이 창의 Auth는 iframe이 필요 없는
- *    initializeAuth(팝업·리다이렉트 해석기 없이)로 만든다. 이메일 로그인은 이 창에서 바로 한다.
+ *    initializeAuth(팝업·리다이렉트 해석기 없이)로 만든다.
  *  - 데이터 경로: games/janggi/rooms/{roomId}, 그 아래 moves/{ply}, chat/{자동 id}. 규칙은 firestore.rules.
- *  - 이메일 숫자 코드 인증: Cloud Functions sendEmailCode·verifyEmailCode(functions/, 지역 asia-northeast3)를 부른다.
- *    인증되면 ID 토큰을 새로 받아 규칙이 email_verified를 보게 한다. Google 로그인은 처음부터 인증된 사용자.
+ *  - 이메일 로그인(다른 기기 승인형, 비밀번호 없음): Cloud Functions(functions/, 지역 asia-northeast3)
+ *    startEmailLogin으로 승인 메일을 보내고, claimEmailLogin으로 승인됐는지 묻다가 받은 custom token으로
+ *    signInWithCustomToken 한다. "모든 기기에서 로그아웃"은 revokeAllSessions.
+ *    Google 로그인 직후에는 noteLogin으로 기기를 기록한다(새 기기면 서버가 알림 메일). 기기 목록은 users/{uid} 문서를 읽는다.
  * 공개: createFirebaseBackend(config, sdkVersion) → fake-backend.js와 같은 모양의 객체
  * @module online/firebase-backend
  */
@@ -29,8 +31,7 @@ export async function createFirebaseBackend(config, sdkVersion) {
   const { initializeApp, getApps } = appMod;
   const {
     initializeAuth, indexedDBLocalPersistence, browserLocalPersistence, onAuthStateChanged,
-    signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail,
-    updateProfile, signOut
+    signInWithCustomToken, signOut
   } = authMod;
   const {
     initializeFirestore, doc, collection, getDoc, onSnapshot, query, orderBy, limit,
@@ -42,8 +43,17 @@ export async function createFirebaseBackend(config, sdkVersion) {
   // 회사·학교 망처럼 스트리밍이 막힌 곳에서도 붙도록 자동으로 롱폴링을 고른다
   const db = initializeFirestore(app, { experimentalAutoDetectLongPolling: true });
   const functions = getFunctions(app, FUNCTIONS_REGION);
-  const callSend = httpsCallable(functions, "sendEmailCode");
-  const callVerify = httpsCallable(functions, "verifyEmailCode");
+  const callStart = httpsCallable(functions, "startEmailLogin");
+  const callClaim = httpsCallable(functions, "claimEmailLogin");
+  const callRevoke = httpsCallable(functions, "revokeAllSessions");
+  const callNote = httpsCallable(functions, "noteLogin");
+  const fn = async (callable, data) => {
+    try {
+      return (await callable(data)).data;
+    } catch (e) {
+      throw fnError(e);
+    }
+  };
 
   const roomRef = id => doc(db, "games", "janggi", "rooms", id);
   const movesCol = id => collection(roomRef(id), "moves");
@@ -53,9 +63,7 @@ export async function createFirebaseBackend(config, sdkVersion) {
     uid: u.uid,
     name: u.displayName || (u.email ? u.email.split("@")[0] : "이름 없음"),
     email: u.email || "",
-    provider: (u.providerData[0] && u.providerData[0].providerId) || "password",
-    // 규칙과 같은 기준: Google 로그인이거나 이메일 인증을 마침
-    verified: !!u.emailVerified || u.providerData.some(p => p.providerId === "google.com")
+    provider: (u.providerData[0] && u.providerData[0].providerId) || "email"
   };
 
   /** callable 오류 "functions/resource-exhausted" → { code: "resource-exhausted", details } */
@@ -127,46 +135,35 @@ export async function createFirebaseBackend(config, sdkVersion) {
         return () => authListeners.delete(cb);
       },
       signInGoogle,
-      async signInEmail(email, pw) {
-        const cred = await signInWithEmailAndPassword(auth, email, pw);
-        return toUser(cred.user);
+      /** 승인 메일 보내기 → { req, claimSecret, number, expiresAt, resendAt } */
+      startEmailLogin(email, name, appUrl) {
+        return fn(callStart, { email, name, appUrl });
       },
-      async signUpEmail(email, pw, name) {
-        const cred = await createUserWithEmailAndPassword(auth, email, pw);
-        if (name) await updateProfile(cred.user, { displayName: name });
-        const user = toUser(cred.user);
-        if (name) user.name = name;
-        authListeners.forEach(cb => cb(user));
-        return user;
+      /** 승인됐는지 묻는다. 승인됐으면 받은 토큰으로 이 창을 로그인시킨다 → { status, user? } */
+      async claimEmailLogin(req, claimSecret, deviceId) {
+        const r = await fn(callClaim, { req, claimSecret, deviceId });
+        if (r.status !== "approved") return r;
+        const cred = await signInWithCustomToken(auth, r.token);
+        return { status: "approved", user: toUser(cred.user) };
       },
-      resetPassword(email) {
-        return sendPasswordResetEmail(auth, email).then(() => true);
+      /** Google 로그인 직후: 기기 기록·새 기기 알림 메일 */
+      noteLogin(deviceId, appUrl) {
+        return fn(callNote, { deviceId, appUrl });
+      },
+      /** 로그인한 기기 목록 (games/janggi/users/{uid}.devices, 본인만 읽기) */
+      async listDevices() {
+        if (!auth.currentUser) return [];
+        const snap = await getDoc(doc(db, "games", "janggi", "users", auth.currentUser.uid));
+        const devices = (snap.exists() && snap.data().devices) || {};
+        return Object.keys(devices).map(key => Object.assign({ key }, devices[key]));
+      },
+      /** 모든 기기에서 로그아웃 (이 기기 포함) */
+      async signOutAll() {
+        await fn(callRevoke, {});
+        return signOut(auth);
       },
       signOut() {
         return signOut(auth);
-      },
-      async sendEmailCode() {
-        try {
-          return (await callSend({})).data;
-        } catch (e) {
-          throw fnError(e);
-        }
-      },
-      async verifyEmailCode(code) {
-        let res;
-        try {
-          res = (await callVerify({ code })).data;
-        } catch (e) {
-          throw fnError(e);
-        }
-        if (res && res.ok && auth.currentUser) {
-          // 서버가 바꾼 emailVerified를 읽고, 규칙이 볼 ID 토큰도 새로 받는다
-          await auth.currentUser.reload();
-          await auth.currentUser.getIdToken(true);
-          const user = toUser(auth.currentUser);
-          authListeners.forEach(cb => cb(user));
-        }
-        return res;
       }
     },
 

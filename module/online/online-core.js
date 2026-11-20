@@ -134,21 +134,16 @@ function olSetUrlRoom(id) {
 function olErrorText(err) {
   const code = (err && err.code) || "";
   const map = {
-    "auth/user-not-found": "가입하지 않은 이메일입니다.",
-    "auth/wrong-password": "비밀번호가 맞지 않습니다.",
-    "auth/invalid-credential": "이메일 또는 비밀번호가 맞지 않습니다.",
-    "auth/invalid-email": "이메일 주소 형식이 맞지 않습니다.",
-    "auth/email-already-in-use": "이미 가입한 이메일입니다. 로그인해 주세요.",
-    "auth/weak-password": "비밀번호는 6자 이상이어야 합니다.",
-    "auth/missing-password": "비밀번호를 넣어 주세요.",
     "auth/too-many-requests": "시도가 너무 많습니다. 잠시 뒤 다시 해 주세요.",
     "auth/popup-blocked": "로그인 창이 막혔습니다. 팝업을 허용해 주세요.",
     "auth/popup-closed-by-user": "로그인 창이 닫혔습니다.",
     "auth/unauthorized-domain": "이 주소가 Firebase 승인된 도메인에 없습니다 (docs/online-setup.md).",
     "auth/operation-not-allowed": "Firebase 콘솔에서 이 로그인 방식이 꺼져 있습니다.",
     "auth/timeout": "로그인을 기다리다 시간이 지났습니다.",
-    "auth/unverified": "이메일 인증을 마친 뒤에 방을 만들 수 있습니다. 초대받은 방에는 지금도 들어갈 수 있습니다.",
-    "resource-exhausted": "지금은 코드를 보낼 수 없습니다.",
+    "auth/invalid-custom-token": "로그인 토큰이 맞지 않습니다. 다시 로그인해 주세요.",
+    "resource-exhausted": "지금은 로그인 메일을 보낼 수 없습니다.",
+    "invalid-argument": "입력이 맞지 않습니다.",
+    "internal": "서버에서 처리하지 못했습니다. 잠시 뒤 다시 해 주세요.",
     "unauthenticated": "로그인이 필요합니다.",
     "not-found": "그런 방이 없습니다. 코드를 확인해 주세요.",
     "room-full": "이미 두 사람이 들어간 방입니다.",
@@ -195,24 +190,61 @@ async function olInitBackend() {
   });
 }
 
-/** 로그인 함수 모음 (online-ui.js 폼이 부른다) */
+/**
+ * 이 브라우저의 무작위 기기 ID (localStorage "janggiDeviceId"). 새 기기 로그인 알림에 쓴다.
+ * 서버에는 사용자별 해시로만 남는다 (functions/email-login-core.js noteDevice).
+ */
+function olDeviceId() {
+  const KEY = "janggiDeviceId";
+  try {
+    let id = localStorage.getItem(KEY);
+    if (!/^[A-Za-z0-9_-]{16,64}$/.test(id || "")) {
+      const b = crypto.getRandomValues(new Uint8Array(16));
+      id = btoa(String.fromCharCode.apply(null, b)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+      localStorage.setItem(KEY, id);
+    }
+    return id;
+  } catch (e) {
+    return ""; // 저장소를 못 쓰면 기기 기록·알림 없이 로그인만
+  }
+}
+
+/** 로그인 함수 모음 (online-ui.js·online-email-login.js가 부른다) */
 const olAuth = {
-  google: () => olBackend.auth.signInGoogle(),
-  email: (email, pw) => olBackend.auth.signInEmail(email, pw),
-  signUp: (email, pw, name) => olBackend.auth.signUpEmail(email, pw, String(name || "").trim().slice(0, OL_NAME_MAX)),
-  reset: email => olBackend.auth.resetPassword(email),
+  google: async () => {
+    const user = await olBackend.auth.signInGoogle();
+    // 기기 기록·새 기기 알림 (실패해도 로그인은 그대로)
+    olBackend.auth.noteLogin(olDeviceId(), window.location.href)
+      .then(() => olEmit("devices"))
+      .catch(e => console.warn("[online] 기기 기록 실패:", e && (e.code || e.message)));
+    return user;
+  },
+  /** 로그인한 기기 목록 [{key, label, firstAt, lastAt, current}] (본인만 읽을 수 있음) */
+  devices: async () => {
+    const list = await olBackend.auth.listDevices();
+    const id = olDeviceId();
+    const mine = id && olUser && window.EmailLoginCore
+      ? await EmailLoginCore.deviceKeyOf(olUser.uid, id, olSha256Hex)
+      : "";
+    return list.map(d => Object.assign({}, d, { current: d.key === mine })).sort((a, b) => b.lastAt - a.lastAt);
+  },
+  // 이메일 승인형 로그인: 메일 보내기 → 승인됐는지 묻기(승인되면 백엔드가 로그인시킴)
+  emailStart: (email, name, appUrl) => olBackend.auth.startEmailLogin(String(email || "").trim(), String(name || "").trim().slice(0, OL_NAME_MAX), appUrl),
+  emailClaim: (req, claimSecret) => olBackend.auth.claimEmailLogin(req, claimSecret, olDeviceId()),
   signOut: async () => {
     if (olRoomId) await olLeaveRoom(true);
     return olBackend.auth.signOut();
   },
-  // 이메일 숫자 코드 인증 (Cloud Functions sendEmailCode·verifyEmailCode, 가짜 백엔드는 같은 규칙을 흉내)
-  sendCode: () => olBackend.auth.sendEmailCode(),
-  verifyCode: code => olBackend.auth.verifyEmailCode(String(code || "").trim())
+  /** 모든 기기에서 로그아웃 (이 기기 포함) */
+  signOutAll: async () => {
+    if (olRoomId) await olLeaveRoom(true);
+    return olBackend.auth.signOutAll();
+  }
 };
 
-/** 실제 사용자(Google 로그인 또는 이메일 인증 마침)인지. 인증 전에는 초대받은 방 입장만 된다 */
-function olIsVerified() {
-  return !!(olUser && olUser.verified);
+async function olSha256Hex(text) {
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+  return Array.from(new Uint8Array(buf), b => b.toString(16).padStart(2, "0")).join("");
 }
 
 // ===== 상태 묻기 =====
@@ -249,7 +281,6 @@ function olInPreview() {
  */
 async function olCreateRoom(opts) {
   if (!olUser) throw Object.assign(new Error("로그인이 필요합니다"), { code: "auth/required" });
-  if (!olIsVerified()) throw Object.assign(new Error("인증 필요"), { code: "auth/unverified" });
   if (olRoomId) await olLeaveRoom(true);
   const side = opts.side === "random" ? (crypto.getRandomValues(new Uint8Array(1))[0] % 2 ? "han" : "cho") : opts.side;
   const me = { uid: olUser.uid, name: olUser.name.slice(0, OL_NAME_MAX) };

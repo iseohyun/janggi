@@ -2,9 +2,11 @@
  * @fileoverview 온라인 대국 가짜 백엔드 (개발·검증용).
  *  - 같은 브라우저의 두 탭이 한 판을 둔다. 데이터는 localStorage("janggiOnlineFake")에 두고,
  *    바뀌면 BroadcastChannel("janggi-online-fake")로 다른 탭에 알린다. 새로고침해도 남아 있으므로 복원도 시험할 수 있다.
- *  - 로그인은 탭마다 따로다(sessionStorage). Google 로그인은 가짜 사용자(인증됨)를 만든다. 이메일 계정은 이 브라우저 안에만 있다.
- *  - 이메일 숫자 코드 인증은 Cloud Functions와 같은 규칙(functions/email-code-core.js)을 쓴다. 메일 대신 콘솔에 코드를 찍고,
- *    시험용으로 OnlineFakeBackend.peekCode()가 마지막 코드를 돌려준다. 인증 전 계정은 방을 만들 수 없다(firestore.rules 흉내).
+ *  - 로그인은 탭마다 따로다(sessionStorage). Google 로그인은 가짜 사용자를 만든다. 이메일 계정은 이 브라우저 안에만 있다.
+ *  - 이메일 승인형 로그인은 Cloud Functions와 같은 흐름(functions/email-login-core.js)을 그대로 돌린다.
+ *    메일 대신 콘솔에 승인 링크를 찍고, 시험용으로 OnlineFakeBackend.peekLoginMail()이 마지막 메일을 돌려준다.
+ *    승인 페이지(online-approve.html?backend=fake)도 이 파일을 읽어 같은 저장소로 승인한다.
+ *  - "모든 기기에서 로그아웃"은 같은 계정으로 로그인한 다른 탭을 로그아웃시킨다.
  *  - Firebase 백엔드(firebase-backend.js)와 같은 모양의 함수를 내놓는다. 규칙 검사는 firestore.rules가 하는 것 중
  *    "차례·참가자·수 번호"만 흉내 낸다 (받은 수가 장기 규칙에 맞는지는 받는 쪽 online-core.js가 본다).
  * 공개: window.OnlineFakeBackend (online-core.js가 고른다)
@@ -27,7 +29,7 @@
     } catch (e) {
       console.warn("[fake-backend] 저장소를 읽지 못해 새로 시작합니다:", e);
     }
-    return { rooms: {}, moves: {}, chat: {}, users: {}, emailCodes: {}, devMail: {} };
+    return { rooms: {}, moves: {}, chat: {}, users: {}, docs: {}, devMail: {} };
   }
 
   function writeDb(db) {
@@ -46,9 +48,10 @@
     });
   }
 
-  function fail(code, message) {
+  function fail(code, message, details) {
     const err = new Error(message || code);
     err.code = code;
+    if (details) err.details = details;
     return err;
   }
 
@@ -98,14 +101,99 @@
     return "fake-" + Math.random().toString(36).slice(2, 10);
   }
 
-  // 비밀번호는 이 브라우저 안 시험용이지만 평문으로 두지 않는다
-  function pwHash(pw) {
-    let h = 2166136261;
-    for (let k = 0; k < pw.length; k++) {
-      h ^= pw.charCodeAt(k);
-      h = Math.imul(h, 16777619);
-    }
-    return (h >>> 0).toString(16);
+  // 시험용 시계 (OnlineFakeBackend.advanceClock(ms)로 만료를 미리 볼 수 있다)
+  let clockOffset = 0;
+  const fakeNow = () => Date.now() + clockOffset;
+
+  function randomId(n) {
+    const b = crypto.getRandomValues(new Uint8Array(n));
+    return btoa(String.fromCharCode.apply(null, b)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  }
+
+  /** functions/email-login-core.js를 이 브라우저의 localStorage 위에서 돌린다 (서버와 같은 규칙) */
+  let login = null;
+  function emailLogin() {
+    if (login) return login;
+    login = window.EmailLoginCore.makeEmailLogin({
+      store: {
+        async tx(fn) {
+          const db = readDb();
+          const docs = db.docs || (db.docs = {});
+          const writes = [];
+          const r = await fn({
+            get: async p => (p in docs ? clone(docs[p]) : null),
+            set: (p, d) => writes.push([p, clone(d)]),
+            del: p => writes.push([p, null])
+          });
+          const fresh = readDb(); // 기다리는 동안 다른 탭이 쓴 것 위에 얹는다
+          const fdocs = fresh.docs || (fresh.docs = {});
+          writes.forEach(([p, d]) => {
+            if (d) fdocs[p] = d;
+            else delete fdocs[p];
+          });
+          writeDb(fresh);
+          return r;
+        },
+        async merge(p, d) {
+          const db = readDb();
+          const docs = db.docs || (db.docs = {});
+          docs[p] = Object.assign({}, docs[p] || {}, clone(d));
+          writeDb(db);
+        }
+      },
+      users: {
+        async findOrCreate(email, name) {
+          const db = readDb();
+          let acc = db.users[email];
+          if (!acc) {
+            acc = db.users[email] = { uid: newUid(), name: name || email.split("@")[0], email };
+            writeDb(db);
+          }
+          return { uid: acc.uid, name: acc.name, isNew: false };
+        },
+        async token(uid) {
+          return `fake-token:${uid}`;
+        },
+        async revoke(uid) {
+          const at = Math.floor(fakeNow() / 1000);
+          if (chan) chan.postMessage({ what: "revoked", uid, at });
+          return at;
+        }
+      },
+      mailer: {
+        async send(m) {
+          const db = readDb();
+          db.devMail = db.devMail || {};
+          db.devMail.last = clone(m);
+          db.devMail.all = (db.devMail.all || []).concat([clone(m)]).slice(-30);
+          writeDb(db);
+          console.info(`[fake-backend] 메일 대신: ${m.to} 승인 링크 ${m.link}`);
+        }
+      },
+      fail,
+      allowedOrigins: [window.location.origin],
+      now: fakeNow,
+      randomId,
+      randomInt: max => crypto.getRandomValues(new Uint32Array(1))[0] % max,
+      hash: async text => {
+        const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+        return Array.from(new Uint8Array(buf), b => b.toString(16).padStart(2, "0")).join("");
+      },
+      log: { info() {}, error: (...a) => console.error(...a) }
+    });
+    return login;
+  }
+
+  const ctx = () => ({ ip: "fake-ip", ua: navigator.userAgent, auth: null });
+  const call = (fn, data) => later(() => null).then(() => emailLogin()[fn](ctx(), data));
+
+  // 다른 탭에서 "모든 기기에서 로그아웃"을 누르면 같은 계정의 이 탭도 로그아웃
+  if (chan) {
+    chan.addEventListener("message", ev => {
+      const m = ev.data || {};
+      const me = currentUser();
+      if (m.what === "revoked" && me && me.uid === m.uid && (me.authTime || 0) < m.at) setUser(null);
+    });
   }
 
   const auth = {
@@ -117,92 +205,54 @@
     signInGoogle() {
       return later(() => {
         const n = Math.floor(Math.random() * 900 + 100);
-        return setUser({ uid: newUid(), name: `구글사용자${n}`, email: `google${n}@example.test`, provider: "google", verified: true });
+        return setUser({ uid: newUid(), name: `구글사용자${n}`, email: `google${n}@example.test`, provider: "google", authTime: Math.floor(fakeNow() / 1000) });
       });
     },
-    signInEmail(email, pw) {
+    startEmailLogin(email, name, appUrl) {
+      return call("start", { email, name, appUrl });
+    },
+    async claimEmailLogin(req, claimSecret, deviceId) {
+      const r = await call("claim", { req, claimSecret, deviceId });
+      if (r.status !== "approved") return r;
+      const uid = String(r.token).replace(/^fake-token:/, "");
+      const acc = Object.values(readDb().users).find(a => a.uid === uid);
+      const user = setUser({ uid, name: acc ? acc.name : uid, email: acc ? acc.email : "", provider: "email", authTime: Math.floor(fakeNow() / 1000) + 1 });
+      return { status: "approved", user };
+    },
+    noteLogin(deviceId, appUrl) {
+      const me = currentUser();
+      if (!me) return Promise.reject(fail("unauthenticated"));
+      const auth = { uid: me.uid, token: { email: me.email, auth_time: me.authTime || Math.floor(fakeNow() / 1000) } };
+      return later(() => null).then(() => emailLogin().noteLogin({ ip: "fake-ip", ua: navigator.userAgent, auth }, { deviceId, appUrl }));
+    },
+    listDevices() {
       return later(() => {
-        const db = readDb();
-        const acc = db.users[String(email).toLowerCase()];
-        if (!acc) throw fail("auth/user-not-found");
-        if (acc.pw !== pwHash(pw)) throw fail("auth/wrong-password");
-        return setUser({ uid: acc.uid, name: acc.name, email: acc.email, provider: "password", verified: !!acc.verified });
+        const me = currentUser();
+        const rec = me && (readDb().docs || {})[`games/janggi/users/${me.uid}`];
+        const devices = (rec && rec.devices) || {};
+        return Object.keys(devices).map(key => Object.assign({ key }, devices[key]));
       });
     },
-    signUpEmail(email, pw, name) {
-      return later(() => {
-        const db = readDb();
-        const key = String(email).toLowerCase();
-        if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(key)) throw fail("auth/invalid-email");
-        if (String(pw).length < 6) throw fail("auth/weak-password");
-        if (db.users[key]) throw fail("auth/email-already-in-use");
-        const acc = { uid: newUid(), name: name || key.split("@")[0], email: key, pw: pwHash(pw), verified: false };
-        db.users[key] = acc;
-        writeDb(db);
-        return setUser({ uid: acc.uid, name: acc.name, email: acc.email, provider: "password", verified: false });
-      });
-    },
-    resetPassword(email) {
-      return later(() => {
-        const db = readDb();
-        if (!db.users[String(email).toLowerCase()]) throw fail("auth/user-not-found");
-        console.info("[fake-backend] 가짜 백엔드라 메일을 보내지 않습니다:", email);
-        return true;
-      });
+    async signOutAll() {
+      const me = currentUser();
+      if (!me) throw fail("unauthenticated");
+      await later(() => null);
+      await emailLogin().revoke({ auth: { uid: me.uid, token: { auth_time: me.authTime || 0 } } });
+      setUser(null);
     },
     signOut() {
       return later(() => setUser(null));
-    },
-    sendEmailCode() {
-      return later(() => null).then(async () => {
-        const user = currentUser();
-        if (!user) throw fail("unauthenticated");
-        if (user.verified) return { alreadyVerified: true };
-        const db = readDb();
-        const res = await window.EmailCodeCore.issueCode(db.emailCodes[user.uid] || null, user, codeDeps());
-        if (!res.ok) throw Object.assign(fail("resource-exhausted"), { details: { reason: res.reason, retryAfterMs: res.retryAfterMs } });
-        db.emailCodes[user.uid] = res.record;
-        db.devMail[user.uid] = res.code;
-        writeDb(db);
-        console.info(`[fake-backend] 메일 대신: ${user.email} 인증 코드 ${res.code}`);
-        return { expiresAt: res.expiresAt, resendAt: res.resendAt, dailyLeft: res.dailyLeft };
-      });
-    },
-    verifyEmailCode(code) {
-      return later(() => null).then(async () => {
-        const user = currentUser();
-        if (!user) throw fail("unauthenticated");
-        if (user.verified) return { ok: true, alreadyVerified: true };
-        const db = readDb();
-        const r = await window.EmailCodeCore.checkCode(db.emailCodes[user.uid] || null, user, code, codeDeps());
-        if (r.record) db.emailCodes[user.uid] = r.record;
-        if (r.ok) {
-          const acc = db.users[user.email];
-          if (acc) acc.verified = true;
-          delete db.devMail[user.uid];
-        }
-        writeDb(db);
-        if (!r.ok) return { ok: false, reason: r.reason, attemptsLeft: r.attemptsLeft, retryAfterMs: r.retryAfterMs };
-        setUser(Object.assign({}, user, { verified: true }));
-        return { ok: true };
-      });
     }
   };
 
-  // 시험용 시계 (OnlineFakeBackend.advanceClock(ms)로 만료·잠금을 미리 볼 수 있다)
-  let clockOffset = 0;
-
-  function codeDeps() {
-    return {
-      now: Date.now() + clockOffset,
-      randomCode: () => String(crypto.getRandomValues(new Uint32Array(1))[0] % 1000000).padStart(6, "0"),
-      randomSalt: () => Array.from(crypto.getRandomValues(new Uint8Array(16)), b => b.toString(16).padStart(2, "0")).join(""),
-      hash: async text => {
-        const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
-        return Array.from(new Uint8Array(buf), b => b.toString(16).padStart(2, "0")).join("");
-      }
-    };
-  }
+  /** 승인 페이지(online-approve.html)가 부르는 것 (Firebase에서는 callable getEmailLogin·approveEmailLogin·denyEmailLogin) */
+  const approvePage = {
+    info: (req, t) => call("info", { req, t }),
+    approve: (req, t, pick) => call("approve", { req, t, pick }),
+    deny: (req, t) => call("deny", { req, t }),
+    /** 알림 메일의 로그아웃 링크 페이지(online-revoke.html)가 부른다 (Firebase에서는 callable revokeByLink) */
+    revokeByLink: (id, t) => call("revokeByLink", { id, t })
+  };
 
   // ===== 방 =====
 
@@ -214,13 +264,13 @@
     kind: "fake",
     label: "가짜 백엔드 (이 브라우저의 탭끼리)",
     auth,
+    approvePage,
 
     createRoom(id, room) {
       return later(() => {
         const db = readDb();
         const user = currentUser();
-        // firestore.rules: 방 만들기는 Google 로그인 또는 이메일 인증을 마친 사용자만
-        if (!user || user.uid !== room.hostUid || !user.verified) throw fail("permission-denied", "인증된 사용자만 방을 만들 수 있습니다");
+        if (!user || user.uid !== room.hostUid) throw fail("permission-denied");
         if (db.rooms[id]) throw fail("already-exists");
         db.rooms[id] = clone(room);
         db.moves[id] = {};
@@ -334,13 +384,19 @@
       localStorage.removeItem(DB_KEY);
     },
 
-    /** 시험용: 이 탭 사용자에게 "보낸" 마지막 인증 코드 */
-    peekCode() {
-      const user = currentUser();
-      return user ? (readDb().devMail[user.uid] || null) : null;
+    /** 시험용: "보낸" 메일 전부 (최근 30통, kind: "login" | "new-device") */
+    peekMails() {
+      const db = readDb();
+      return (db.devMail && db.devMail.all) || [];
     },
 
-    /** 시험용: 인증 코드 시계를 앞으로 돌린다 (만료·잠금 확인) */
+    /** 시험용: 마지막으로 "보낸" 메일 { kind, to, link, device, ... } */
+    peekLoginMail() {
+      const db = readDb();
+      return (db.devMail && db.devMail.last) || null;
+    },
+
+    /** 시험용: 로그인 요청 시계를 앞으로 돌린다 (만료 확인). 승인 페이지 탭과 따로 돈다 */
     advanceClock(ms) {
       clockOffset += ms;
       return clockOffset;
