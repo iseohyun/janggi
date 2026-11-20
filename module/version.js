@@ -7,7 +7,7 @@
  */
 
 const APP_VERSION = "2.0.0";
-const BUILD_TAG = "20261120v46";
+const BUILD_TAG = "20261120v48";
 
 document.addEventListener("DOMContentLoaded", () => {
   const label = document.getElementById("app-version-label");
