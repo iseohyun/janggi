@@ -19,8 +19,8 @@
 const OL_CHARIM_NAMES = ["마상마상", "마상상마", "상마마상", "상마상마"];
 const OL_TIME_CHOICES = [0, 5, 10, 20, 30, 60];
 const OL_OPEN_PAGE = 5; // 열린 대국 목록 한 쪽에 보이는 수
-let olChatSeen = 0; // 읽은 채팅 수
-let olChatRendered = 0;
+let olChatUnread = 0; // 안 읽은 새 채팅 수 (배지)
+let olChatIds = []; // 그려 둔 채팅 id (olChat 순서)
 let olLobby = []; // 열린 대국 요약 (최근 50개)
 let olLobbyUnsub = null;
 let olLobbyAt = 0; // 구독을 건 시각 (오래되면 다시 건다)
@@ -174,6 +174,7 @@ function olEsc(s) {
         <button type="button" class="ol-btn ol-small" data-action="olUndoReject">거절</button>
       </span>
     </div>
+    <button type="button" id="ol-chat-older" class="ol-btn ol-small ol-chat-older" hidden>이전 채팅 더 보기</button>
     <div id="ol-chat-log" class="ol-chat-log" role="log" aria-live="polite" aria-label="채팅"></div>
     <p id="ol-chat-hint" class="ol-hint">온라인 대국 방에 들어가면 상대와 채팅할 수 있습니다.</p>
     <form id="ol-chat-form" class="ol-row ol-chat-form">
@@ -604,20 +605,27 @@ function olChatVisible() {
 function olRenderChat() {
   const logEl = olEl("ol-chat-log");
   if (!logEl) return;
+  olRenderOlderButton();
   if (!olRoomId) {
     logEl.innerHTML = "";
-    olChatRendered = 0;
-    olChatSeen = 0;
+    olChatIds = [];
+    olChatUnread = 0;
     olRenderBadge();
     return;
   }
-  if (olChat.length < olChatRendered) {
-    logEl.innerHTML = "";
-    olChatRendered = 0;
-  }
-  const atBottom = logEl.scrollHeight - logEl.scrollTop - logEl.clientHeight < 40;
+  const ids = olChat.map(m => m.id);
+  const prev = olChatIds;
+  const first = prev.length === 0;
+  // 앞부분이 그대로면 뒤에 붙이고, 아니면(이전 채팅을 불러옴·순서가 바뀜·거부된 글이 빠짐) 다시 그린다
+  const keepsPrefix = prev.length <= ids.length && prev.every((id, k) => ids[k] === id);
+  const fromBottom = logEl.scrollHeight - logEl.scrollTop;
+  const atBottom = fromBottom - logEl.clientHeight < 40;
+  const startAt = keepsPrefix ? prev.length : 0;
+  if (!keepsPrefix) logEl.innerHTML = "";
+  const prevSet = new Set(prev);
+  const lastPrev = prev.length ? olChatById.get(prev[prev.length - 1]) : null;
   const frag = document.createDocumentFragment();
-  for (let k = olChatRendered; k < olChat.length; k++) {
+  for (let k = startAt; k < olChat.length; k++) {
     const m = olChat[k];
     const row = document.createElement("div");
     const mine = olUser && m.uid === olUser.uid;
@@ -631,24 +639,34 @@ function olRenderChat() {
         <span class="ol-msg-bubble">${olEsc(m.text)}</span><time>${time}</time>`;
     }
     frag.appendChild(row);
-    // 다른 사람이 쓴 새 글은 채팅이 안 보이면 잠깐 띄운다 (처음 불러온 지난 글은 빼고)
-    if (olChatRendered > 0 && !mine && !olChatVisible()) {
-      olToast(m.kind === "system" ? m.text : `${m.name}: ${m.text}`, 2600);
+    // 남이 새로 쓴 글(처음 불러온 것·이전 채팅은 빼고): 안 읽은 수를 세고, 채팅이 안 보이면 잠깐 띄운다
+    const fresh = !first && !mine && !prevSet.has(m.id) && (!lastPrev || (m.atMs || 0) >= (lastPrev.atMs || 0));
+    if (fresh) {
+      olChatUnread++;
+      if (!olChatVisible()) olToast(m.kind === "system" ? m.text : `${m.name}: ${m.text}`, 2600);
     }
   }
-  const first = olChatRendered === 0;
   logEl.appendChild(frag);
-  olChatRendered = olChat.length;
-  if (first) olChatSeen = olChat.length;
+  olChatIds = ids;
   if (atBottom || first) logEl.scrollTop = logEl.scrollHeight;
-  if (olChatVisible()) olChatSeen = olChat.length;
+  else if (!keepsPrefix) logEl.scrollTop = logEl.scrollHeight - fromBottom; // 위에 이전 채팅이 붙어도 보던 곳 그대로
+  if (olChatVisible()) olChatUnread = 0;
   olRenderBadge();
+}
+
+/** "이전 채팅 더 보기": 이전 채팅이 더 있을 수 있을 때만 */
+function olRenderOlderButton() {
+  const btn = olEl("ol-chat-older");
+  if (!btn) return;
+  btn.hidden = !(olRoomId && !olSpectating && olChatHasOlder);
+  btn.disabled = olChatLoadingOlder;
+  btn.textContent = olChatLoadingOlder ? "불러오는 중…" : "이전 채팅 더 보기";
 }
 
 function olRenderBadge() {
   const badge = olEl("ol-chat-badge");
   if (!badge) return;
-  const n = Math.max(0, olChat.length - olChatSeen);
+  const n = olChatUnread;
   badge.hidden = n === 0;
   badge.textContent = n > 9 ? "9+" : String(n);
 }
@@ -889,8 +907,11 @@ document.addEventListener("DOMContentLoaded", () => {
     const text = input.value;
     if (!text.trim()) return;
     input.value = "";
-    olSendChat(text);
+    olSendChat(text).then(ok => {
+      if (!ok && !input.value) input.value = text; // 못 보냈으면 쓴 글을 돌려 둔다
+    });
   });
+  olEl("ol-chat-older").addEventListener("click", () => olLoadOlderChat());
   olEl("ol-ai").addEventListener("change", ev => {
     const cb = ev.target.closest("input[data-ol-ai]");
     if (cb) olSetAi(cb.dataset.olAi, cb.checked);
@@ -909,7 +930,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // 채팅을 보면 읽음
   const seen = () => {
     if (olChatVisible()) {
-      olChatSeen = olChat.length;
+      olChatUnread = 0;
       olRenderBadge();
     }
   };

@@ -6,6 +6,7 @@ rules_version = '2';
 //  - 데이터: games/janggi/rooms/{roomId}
 //            games/janggi/rooms/{roomId}/moves/{ply}   (ply = 0부터 세는 수 번호, 문서 id = 그 숫자)
 //            games/janggi/rooms/{roomId}/chat/{자동 id}
+//            games/janggi/chatRate/{uid}   (채팅 보내는 간격 기록, 채팅과 같은 일괄 쓰기로 본인이 씀)
 //            games/janggi/lobby/{roomId}   (공개 방 요약, Cloud Functions syncLobby만 씀, 누구나 읽음)
 //  - 앱 코드: module/online/firebase-backend.js, online-core.js
 //  - 이 Firebase 프로젝트(any-match-hub)는 다른 게임과 함께 쓸 수 있다.
@@ -321,10 +322,35 @@ service cloud.firestore {
           && request.resource.data.text.size() > 0
           && request.resource.data.text.size() <= 300
           && validName(request.resource.data.name)
-          && request.resource.data.keys().hasOnly(['uid', 'name', 'side', 'text', 'kind', 'atMs', 'at']);
+          && request.resource.data.keys().hasOnly(['uid', 'name', 'side', 'text', 'kind', 'atMs', 'at'])
+          && chatRateOk();
+
+        // 보내는 간격 제한: 같은 일괄 쓰기에서 내 chatRate 문서를 "지금 시각 + 이 방·이 메시지"로 바꿔야 하고,
+        // 바꾸기 전 마지막 보낸 시각이 CHAT_GAP(2초)보다 오래돼야 한다. msg 칸이 메시지 id 하나만 가리키므로
+        // 한 일괄 쓰기에 채팅을 여러 개 넣어도 하나만 통과한다. 시스템 메시지(kind 'system')도 같은 간격을 따른다.
+        function chatRateOk() {
+          let rate = /databases/$(database)/documents/games/janggi/chatRate/$(request.auth.uid);
+          let after = getAfter(rate).data;
+          return after.lastAt == request.time
+            && after.room == roomId
+            && after.msg == msgId
+            && (!exists(rate) || get(rate).data.lastAt <= request.time - duration.value(2, 's'));
+        }
 
         allow update, delete: if false;
       }
+    }
+
+    // ----- 채팅 보내는 간격 기록 (사용자마다 하나, 모든 방 공통): 본인만, 채팅과 같은 일괄 쓰기로 -----
+    // lastAt은 서버 시각(serverTimestamp)이어야 한다. 이 문서만 따로 써도 자기 채팅이 잠시 막힐 뿐이다.
+    match /games/janggi/chatRate/{uid} {
+      allow read: if signedIn() && me() == uid;
+      allow create, update: if signedIn() && me() == uid
+        && request.resource.data.keys().hasOnly(['lastAt', 'room', 'msg'])
+        && request.resource.data.lastAt == request.time
+        && request.resource.data.room is string && request.resource.data.room.size() <= 16
+        && request.resource.data.msg is string && request.resource.data.msg.size() <= 40;
+      allow delete: if false;
     }
 
     // ----- 공개 대국 목록 요약: 누구나 읽기(관전·목록은 로그인 없이), 한 번에 50개까지. 쓰기는 Cloud Functions(syncLobby·cleanupLobby)만 -----

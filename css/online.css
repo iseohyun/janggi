@@ -433,6 +433,16 @@
   overscroll-behavior: contain;
 }
 
+/* 이전 채팅 더 보기 (채팅 목록 위) */
+.ol-chat-older {
+  display: block;
+  margin: 0 auto 6px;
+}
+
+.ol-chat-older[hidden] {
+  display: none;
+}
+
 .ol-chat-log:empty::before {
   content: "아직 메시지가 없습니다.";
   margin: auto;

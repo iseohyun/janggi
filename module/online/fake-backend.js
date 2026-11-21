@@ -20,6 +20,8 @@
   const DB_KEY = "janggiOnlineFake";
   const USER_KEY = "janggiFakeUser";
   const LATENCY_MS = 40; // 네트워크 흉내
+  const CHAT_PAGE = 50; // 채팅 처음 불러오기·이전 채팅 한 번에 (firebase-backend.js와 같게)
+  const CHAT_GAP_MS = 2000; // 채팅 보내는 간격 (firestore.rules chatRateOk와 같게)
 
   const chan = ("BroadcastChannel" in window) ? new BroadcastChannel("janggi-online-fake") : null;
   const listeners = new Set(); // {roomId, what, fire}
@@ -421,13 +423,18 @@
       });
     },
 
+    /** 채팅 하나. 규칙 chatRateOk 흉내: 같은 사용자의 지난 채팅(모든 방 공통) 뒤 CHAT_GAP_MS가 지나야 한다 */
     sendChat(id, uid, msg) {
       return later(() => {
         const db = readDb();
         if (!isMember(db.rooms[id], uid)) throw fail("permission-denied");
+        const rate = db.chatRate || (db.chatRate = {});
+        const now = fakeNow();
+        if (rate[uid] && now - rate[uid].lastAt < CHAT_GAP_MS) throw fail("permission-denied", "채팅 간격 제한(흉내)에 막혔습니다");
         const list = db.chat[id] || (db.chat[id] = []);
         list.push(Object.assign({ id: `m${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}` }, clone(msg)));
         if (list.length > 500) list.splice(0, list.length - 500);
+        rate[uid] = { lastAt: now, room: id, msg: list[list.length - 1].id };
         writeDb(db);
         notify(id, "chat");
       });
@@ -447,8 +454,14 @@
       }, cb);
     },
 
+    /** 최근 CHAT_PAGE개만 (Firebase의 limit 구독 흉내) */
     watchChat(id, cb) {
-      return watch(id, "chat", () => clone(readDb().chat[id] || []), cb);
+      return watch(id, "chat", () => clone((readDb().chat[id] || []).slice(-CHAT_PAGE)), cb);
+    },
+
+    /** 이전 채팅 더 보기: atMs가 beforeMs보다 앞선 것 CHAT_PAGE개 → 오래된 순 */
+    loadOlderChat(id, beforeMs) {
+      return later(() => clone((readDb().chat[id] || []).filter(m => m.atMs < beforeMs).slice(-CHAT_PAGE)));
     },
 
     /** 공개 대국 목록 (최근 활동 순 50개, 로그인 없이) */

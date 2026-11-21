@@ -15,7 +15,7 @@
  *  - 공개 방은 열린 대국 목록(games/janggi/lobby, functions/lobby-core.js)에 올라간다. 목록 보기와 관전은 로그인 없이 된다.
  *    관전(olSpectate)은 요약과 수만 읽는다(채팅은 읽지도 쓰지도 못함). 관전 중 olSpectating = true, olMySide = null.
  * 공개: olBackend, olUser, olRoom, olRoomId, olMySide, olSpectating, olGameActive(), olLocked(), olIsMyTurn(), olSideName(side),
- *       olCreateRoom(opts), olJoinRoom(id), olLeaveRoom(), olSendChat(text), olSystem(text), olResign(),
+ *       olCreateRoom(opts), olJoinRoom(id), olLeaveRoom(), olSendChat(text), olSystem(text), olLoadOlderChat(), olResign(),
  *       olRequestUndo(), olAnswerUndo(accept), olInviteLink(), olAuth (로그인 함수 모음),
  *       olAmHost(), olInSetup(), olGuestSeated(), olSetMyCharim(k), olSetHostSettings({side, timeLimitMin}),
  *       olSetReady(on), olStartGame(), olSpectate(id), olWatchLobby(cb)
@@ -28,6 +28,9 @@ const OL_SIDE_KO = { cho: "초", han: "한" };
 const OL_CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // 헷갈리는 0·O·1·I 뺌
 const OL_CODE_LEN = 8;
 const OL_CHAT_MAX = 300; // 채팅 한 줄 최대 글자 수 (firestore.rules와 같게)
+const OL_CHAT_PAGE = 50; // 채팅 처음 불러오기·"이전 채팅 더 보기" 한 번에 (firebase-backend.js와 같게)
+const OL_CHAT_GAP_MS = 2000; // 채팅 보내는 간격 (firestore.rules chatRateOk와 같게). 지난 전송 확인 뒤부터 센다
+const OL_CHAT_QUEUE_MAX = 3; // 간격을 기다리는 내 채팅이 이만큼이면 더 받지 않는다 (시스템 메시지는 늘 줄 세움)
 const OL_NAME_MAX = 40;
 const OL_TIMEOUT_GRACE_S = 5; // 상대 시간패를 알리기 전에 더 기다리는 시간 (네트워크 늦음 대비)
 const OL_REASON_KO = { checkmate: "외통수", resign: "기권", timeout: "시간패", doublePass: "연속 한수쉼" };
@@ -41,7 +44,13 @@ var olRoom = null;
 var olMySide = null; // "cho" | "han" (관전 중에는 null)
 var olSpectating = false; // 공개 대국을 관전하는 중 (olRoomId = 관전하는 방)
 var olMoves = []; // 서버의 수 목록 (ply 순)
-var olChat = []; // 채팅 목록
+var olChat = []; // 채팅 목록 (오래된 순, id로 겹침 없이: 구독한 최근 50개 + 불러온 이전 채팅)
+var olChatHasOlder = false; // 이전 채팅이 더 있을 수 있음 ("이전 채팅 더 보기" 단추)
+let olChatById = new Map();
+let olChatLoadingOlder = false;
+let olChatQueue = Promise.resolve(); // 보내는 채팅을 하나씩, 간격을 지켜서
+let olChatWaiting = 0; // 줄 선 내 채팅 수 (kind "user")
+let olChatLastAt = 0; // 마지막 채팅이 서버에 닿았다고 확인된 시각 (사용자 공통이라 방을 옮겨도 그대로)
 let olSynced = []; // 이 화면 판에 둔 수 (초 기준 좌표) - log와 같은 길이
 let olPending = null; // 보내는 중인 내 수의 번호
 let olApplying = false; // 받은 수를 두는 중 (move 감싸기가 통과시킨다)
@@ -407,7 +416,7 @@ function olResetRoomState(id, room) {
   olRoomId = id;
   olRoom = room;
   olMoves = [];
-  olChat = [];
+  olChatReset();
   olSynced = [];
   olPending = null;
   olBoardReady = false;
@@ -437,9 +446,22 @@ async function olEnterRoom(id, room, how) {
     olMoves = list;
     olReconcile();
   }));
+  let firstChat = true;
+  let windowIds = [];
   olUnsubs.push(olBackend.watchChat(id, list => {
-    olChat = list;
-    olEmit("chat");
+    if (olRoomId !== id) return;
+    // 처음 받은 것이 꽉 찼으면 더 이전 채팅이 있을 수 있다
+    if (firstChat) olChatHasOlder = list.length >= OL_CHAT_PAGE;
+    firstChat = false;
+    // 구독 창(최근 50개) 안에서 사라진 것은 거부된 내 쓰기 → 지운다. 창 밖으로 밀려난 것은 남긴다
+    const now = new Set(list.map(m => m.id));
+    const oldest = list.length >= OL_CHAT_PAGE ? (list[0].atMs || 0) : -Infinity;
+    windowIds.forEach(mid => {
+      const m = olChatById.get(mid);
+      if (m && !now.has(mid) && (m.atMs || 0) >= oldest) olChatById.delete(mid);
+    });
+    windowIds = Array.from(now);
+    olChatMerge(list);
   }));
   olEmit("enter");
   const me = `${olSideName(olMySide)} 대국자 ${olUser.name}`;
@@ -712,7 +734,7 @@ function olLeaveLocal() {
   olMySide = null;
   olSpectating = false;
   olMoves = [];
-  olChat = [];
+  olChatReset();
   olBoardReady = false;
   olSetupKey = "";
   olPending = null;
@@ -931,22 +953,84 @@ function olSendMyMove(fromLocal, x, y) {
 
 // ===== 채팅·시스템 메시지 =====
 
+function olChatReset() {
+  olChat = [];
+  olChatById = new Map();
+  olChatHasOlder = false;
+  olChatLoadingOlder = false;
+}
+
+/** 받은 채팅을 합친다 (구독 창 밖으로 밀려난 것도 남긴다). 오래된 순으로 */
+function olChatMerge(list) {
+  list.forEach(m => olChatById.set(m.id, m));
+  olChat = Array.from(olChatById.values()).sort((a, b) => (a.atMs || 0) - (b.atMs || 0));
+  olEmit("chat");
+}
+
+/** 이전 채팅 더 보기 (한 번 읽기, 최대 OL_CHAT_PAGE개). 더 없으면 단추를 숨긴다 */
+async function olLoadOlderChat() {
+  if (!olRoomId || olSpectating || olChatLoadingOlder || !olChatHasOlder || !olBackend.loadOlderChat) return;
+  const id = olRoomId;
+  const before = olChat.length ? olChat[0].atMs : Date.now();
+  olChatLoadingOlder = true;
+  olEmit("chat");
+  try {
+    const list = await olBackend.loadOlderChat(id, before);
+    if (olRoomId !== id) return;
+    olChatHasOlder = list.length >= OL_CHAT_PAGE;
+    olChatMerge(list);
+  } catch (err) {
+    console.error("[online] 이전 채팅을 불러오지 못했습니다:", err);
+    olToast(`이전 채팅을 불러오지 못했습니다: ${olErrorText(err)}`);
+  } finally {
+    olChatLoadingOlder = false;
+    if (olRoomId === id) olEmit("chat");
+  }
+}
+
+/**
+ * 채팅·시스템 메시지 보내기. 서버 규칙이 사용자마다 OL_CHAT_GAP_MS 간격을 지키게 하므로
+ * 하나씩 줄 세워 간격을 기다린 뒤 보낸다. 내 채팅이 OL_CHAT_QUEUE_MAX개 밀려 있으면 받지 않는다(false).
+ * @returns {Promise<boolean>} 보냈으면 true
+ */
 function olSendChat(text, kind) {
   const clean = String(text || "").replace(/\s+/g, " ").trim().slice(0, OL_CHAT_MAX);
   if (!clean || !olRoomId || !olUser || olSpectating) return Promise.resolve(false);
+  const isUser = kind !== "system";
+  if (isUser && olChatWaiting >= OL_CHAT_QUEUE_MAX) {
+    olToast("너무 빨리 보내고 있습니다. 잠시 뒤에 보내 주세요.");
+    return Promise.resolve(false);
+  }
+  const roomId = olRoomId;
+  const user = olUser;
   const msg = {
-    uid: olUser.uid,
-    name: olUser.name.slice(0, OL_NAME_MAX),
+    uid: user.uid,
+    name: user.name.slice(0, OL_NAME_MAX),
     side: olMySide || "",
     text: clean,
-    kind: kind === "system" ? "system" : "user",
-    atMs: Date.now()
+    kind: isUser ? "user" : "system"
   };
-  return olBackend.sendChat(olRoomId, olUser.uid, msg).then(() => true).catch(err => {
-    console.error("[online] 채팅을 보내지 못했습니다:", err);
-    olToast(`메시지를 보내지 못했습니다: ${olErrorText(err)}`);
-    return false;
-  });
+  if (isUser) olChatWaiting++;
+  const run = async () => {
+    try {
+      const wait = olChatLastAt + OL_CHAT_GAP_MS - Date.now();
+      if (wait > 0) await new Promise(r => setTimeout(r, wait));
+      if (olRoomId !== roomId || olUser !== user) return false; // 기다리는 사이 방을 나감
+      msg.atMs = Date.now();
+      await olBackend.sendChat(roomId, user.uid, msg);
+      return true;
+    } catch (err) {
+      console.error("[online] 채팅을 보내지 못했습니다:", err);
+      olToast(`메시지를 보내지 못했습니다: ${olErrorText(err)}`);
+      return false;
+    } finally {
+      olChatLastAt = Date.now();
+      if (isUser) olChatWaiting--;
+    }
+  };
+  const p = olChatQueue.then(run);
+  olChatQueue = p.catch(() => false);
+  return p;
 }
 
 function olSystem(text) {

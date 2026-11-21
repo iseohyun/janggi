@@ -4,7 +4,8 @@
  *   npm.cmd --prefix tools/rules-test install   (처음 한 번)
  *   firebase emulators:exec --only firestore --project demo-janggi "node --test tools/rules-test/rules.test.mjs"
  * 다루는 것: 방 만들기(공개/비공개), 입장, 시작 전 설정(상대: 자기 상차림·준비, 방장: 자기 설정·시작),
- *           시작 뒤 설정 금지, 상대 나가기, 공개 목록(lobby) 읽기·크기 제한·쓰기 금지, 관전(공개 방 수 읽기), 채팅 비공개.
+ *           시작 뒤 설정 금지, 상대 나가기, 공개 목록(lobby) 읽기·크기 제한·쓰기 금지, 관전(공개 방 수 읽기), 채팅 비공개,
+ *           채팅 보내는 간격 제한(chatRate).
  */
 import { test, before, after, beforeEach } from "node:test";
 import assert from "node:assert/strict";
@@ -12,6 +13,8 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 import { initializeTestEnvironment, assertFails, assertSucceeds } from "@firebase/rules-unit-testing";
+import firebase from "firebase/compat/app";
+import "firebase/compat/firestore";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const RULES = readFileSync(resolve(here, "../../firestore.rules"), "utf8");
@@ -37,6 +40,17 @@ function seatedRoom(over = {}) {
 
 const user = uid => env.authenticatedContext(uid, { email_verified: true, auth_time: Math.floor(NOW / 1000) }).firestore();
 const anon = () => env.unauthenticatedContext().firestore();
+
+const serverNow = () => firebase.firestore.FieldValue.serverTimestamp();
+
+/** 앱(firebase-backend.js sendChat)처럼: 채팅 하나 + 내 chatRate 문서를 한 일괄 쓰기로 */
+function sendChat(db, roomId, uid, msg, rateOver = {}) {
+  const ref = db.collection(`${ROOMS}/${roomId}/chat`).doc();
+  const batch = db.batch();
+  batch.set(ref, Object.assign({ at: serverNow() }, msg));
+  batch.set(db.doc(`games/janggi/chatRate/${uid}`), Object.assign({ lastAt: serverNow(), room: roomId, msg: ref.id }, rateOver));
+  return batch.commit();
+}
 
 async function seed(path, data) {
   await env.withSecurityRulesDisabled(async ctx => {
@@ -177,7 +191,7 @@ test("관전: 공개 방의 수는 로그인 없이 읽고, 비공개 방의 수
   await assertSucceeds(user("guest").collection(`${ROOMS}/PRV1/moves`).get()); // 참가자
   await assertFails(anon().collection(`${ROOMS}/PUB1/chat`).get()); // 관전자는 채팅을 못 읽음
   await assertFails(user("third").collection(`${ROOMS}/PUB1/chat`).get());
-  await assertFails(user("third").collection(`${ROOMS}/PUB1/chat`).add({ uid: "third", name: "셋째", text: "훈수", kind: "user", atMs: NOW }));
+  await assertFails(sendChat(user("third"), "PUB1", "third", { uid: "third", name: "셋째", text: "훈수", kind: "user", atMs: NOW }));
   await assertFails(anon().doc(`${ROOMS}/PUB1`).get()); // 방 문서(uid 포함)는 요약으로만 본다
   await assertFails(anon().collection(`${ROOMS}/PUB1/moves`).doc("1").set({ ply: 1, by: "x", fx: 1, fy: 0, tx: 1, ty: 1 }));
 });
@@ -201,7 +215,7 @@ test("대국 중: 수 두기·무르기 청하기·받아들이기·채팅이 �
   b3.delete(guest.doc(`${ROOMS}/G1/moves/0`));
   b3.update(guest.doc(`${ROOMS}/G1`), { ply: 0, undo: null, lastMoveAtMs: NOW });
   await assertSucceeds(b3.commit());
-  await assertSucceeds(guest.collection(`${ROOMS}/G1/chat`).add({ uid: "guest", name: "손님", side: "han", text: "잘 부탁합니다", kind: "user", atMs: NOW }));
+  await assertSucceeds(sendChat(guest, "G1", "guest", { uid: "guest", name: "손님", side: "han", text: "잘 부탁합니다", kind: "user", atMs: NOW }));
   // 시간패 기록
   await assertSucceeds(guest.doc(`${ROOMS}/G1`).update({
     status: "ended", result: { winner: "han", reason: "timeout", by: "guest", atMs: NOW }, clock: { cho: 600, han: 3 }
@@ -231,4 +245,56 @@ test("수 두기는 대국이 시작된 뒤에만 된다 (준비 단계에서는
   batch.update(db.doc(`${ROOMS}/R10`), { ply: 1, lastMoveAtMs: NOW, clock: { cho: 1, han: 0 }, undo: null });
   await assertFails(batch.commit());
   assert.ok(true);
+});
+
+// ----- 채팅 보내는 간격 제한 (chatRate) -----
+
+const hello = (uid, text = "안녕하세요") => ({ uid, name: uid === "host" ? "방장" : "손님", side: "", text, kind: "user", atMs: NOW });
+
+test("채팅 간격: chatRate를 함께 쓰지 않으면 거부, 처음 한 번은 허용, 2초 안에 또 보내면 거부", async () => {
+  await seed(`${ROOMS}/C1`, seatedRoom({ status: "playing", ready: true }));
+  const guest = user("guest");
+  // 채팅만 따로 (예전 방식 addDoc) → 거부
+  await assertFails(guest.collection(`${ROOMS}/C1/chat`).add(hello("guest")));
+  await assertSucceeds(sendChat(guest, "C1", "guest", hello("guest")));
+  await assertFails(sendChat(guest, "C1", "guest", hello("guest", "또")));
+  // 시스템 메시지도 같은 간격
+  await assertFails(sendChat(guest, "C1", "guest", Object.assign(hello("guest", "알림"), { kind: "system" })));
+  // 다른 사람은 따로 센다
+  await assertSucceeds(sendChat(user("host"), "C1", "host", hello("host")));
+});
+
+test("채팅 간격: 지난 전송이 2초보다 오래됐으면 허용", async () => {
+  await seed(`${ROOMS}/C2`, seatedRoom({ status: "playing", ready: true }));
+  await seed("games/janggi/chatRate/guest", { lastAt: new Date(Date.now() - 2500), room: "C2", msg: "old" });
+  await assertSucceeds(sendChat(user("guest"), "C2", "guest", hello("guest")));
+  await seed("games/janggi/chatRate/guest", { lastAt: new Date(Date.now() - 500), room: "C2", msg: "old" });
+  await assertFails(sendChat(user("guest"), "C2", "guest", hello("guest")));
+});
+
+test("채팅 간격: 한 일괄 쓰기에 채팅 두 개, 다른 메시지·다른 방을 가리키는 기록, 클라이언트 시각은 거부", async () => {
+  await seed(`${ROOMS}/C3`, seatedRoom({ status: "playing", ready: true }));
+  const guest = user("guest");
+  const col = guest.collection(`${ROOMS}/C3/chat`);
+  const a = col.doc();
+  const b = col.doc();
+  const two = guest.batch();
+  two.set(a, hello("guest", "하나"));
+  two.set(b, hello("guest", "둘"));
+  two.set(guest.doc("games/janggi/chatRate/guest"), { lastAt: serverNow(), room: "C3", msg: a.id });
+  await assertFails(two.commit());
+  await assertFails(sendChat(guest, "C3", "guest", hello("guest"), { msg: "other" }));
+  await assertFails(sendChat(guest, "C3", "guest", hello("guest"), { room: "ELSEWHERE" }));
+  await assertFails(sendChat(guest, "C3", "guest", hello("guest"), { lastAt: new Date(NOW) }));
+  await assertSucceeds(sendChat(guest, "C3", "guest", hello("guest")));
+});
+
+test("chatRate 문서: 본인만 읽고 쓰며, 남의 기록은 못 쓰고 지우지 못한다", async () => {
+  await seed("games/janggi/chatRate/guest", { lastAt: new Date(Date.now() - 10000), room: "C4", msg: "m" });
+  await assertSucceeds(user("guest").doc("games/janggi/chatRate/guest").get());
+  await assertFails(user("host").doc("games/janggi/chatRate/guest").get());
+  await assertFails(anon().doc("games/janggi/chatRate/guest").get());
+  await assertFails(user("host").doc("games/janggi/chatRate/guest").set({ lastAt: serverNow(), room: "C4", msg: "m" }));
+  await assertFails(user("guest").doc("games/janggi/chatRate/guest").set({ lastAt: serverNow(), room: "C4", msg: "m", extra: 1 }));
+  await assertFails(user("guest").doc("games/janggi/chatRate/guest").delete());
 });

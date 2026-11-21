@@ -36,8 +36,8 @@ export async function createFirebaseBackend(config, sdkVersion) {
     signInWithCustomToken, signOut
   } = authMod;
   const {
-    initializeFirestore, doc, collection, getDoc, onSnapshot, query, orderBy, limit, where,
-    runTransaction, updateDoc, addDoc, serverTimestamp
+    initializeFirestore, doc, collection, getDoc, getDocs, onSnapshot, query, orderBy, limit, where,
+    runTransaction, updateDoc, writeBatch, serverTimestamp
   } = fsMod;
 
   const app = getApps().length ? getApps()[0] : initializeApp(config);
@@ -61,6 +61,9 @@ export async function createFirebaseBackend(config, sdkVersion) {
   const movesCol = id => collection(roomRef(id), "moves");
   const chatCol = id => collection(roomRef(id), "chat");
   const lobbyCol = () => collection(db, "games", "janggi", "lobby");
+  const chatRateRef = uid => doc(db, "games", "janggi", "chatRate", uid);
+  const CHAT_PAGE = 50; // 채팅 처음 불러오기·이전 채팅 한 번에 (online-core.js OL_CHAT_PAGE와 같게)
+  const chatList = snap => snap.docs.map(d => Object.assign({ id: d.id }, d.data())).reverse();
   const LC = window.LobbyCore || { STALE_MS: 30 * 60 * 1000, PAGE_LIMIT: 50 };
 
   const toUser = u => u && {
@@ -230,8 +233,13 @@ export async function createFirebaseBackend(config, sdkVersion) {
       });
     },
 
+    /** 채팅 하나 + 보내는 간격 기록(chatRate/{uid})을 한 일괄 쓰기로 (규칙 chatRateOk가 둘을 함께 본다) */
     sendChat(id, uid, msg) {
-      return addDoc(chatCol(id), Object.assign({}, msg, { at: serverTimestamp() }));
+      const ref = doc(chatCol(id));
+      const batch = writeBatch(db);
+      batch.set(ref, Object.assign({}, msg, { at: serverTimestamp() }));
+      batch.set(chatRateRef(uid), { lastAt: serverTimestamp(), room: id, msg: ref.id });
+      return batch.commit();
     },
 
     watchRoom(id, cb) {
@@ -244,11 +252,17 @@ export async function createFirebaseBackend(config, sdkVersion) {
         err => console.error("[online] 수 구독 오류:", err));
     },
 
+    /** 최근 CHAT_PAGE개만 구독 (재접속할 때마다 이만큼 다시 읽는다). 내림차순으로 받아 뒤집는다 */
     watchChat(id, cb) {
-      // 최근 300개 (내림차순으로 받아 뒤집는다)
-      return onSnapshot(query(chatCol(id), orderBy("atMs", "desc"), limit(300)),
-        snap => cb(snap.docs.map(d => Object.assign({ id: d.id }, d.data())).reverse()),
+      return onSnapshot(query(chatCol(id), orderBy("atMs", "desc"), limit(CHAT_PAGE)),
+        snap => cb(chatList(snap)),
         err => console.error("[online] 채팅 구독 오류:", err));
+    },
+
+    /** 이전 채팅 더 보기: atMs가 beforeMs보다 앞선 것 CHAT_PAGE개 (한 번 읽기, 구독 안 함) → 오래된 순 */
+    async loadOlderChat(id, beforeMs) {
+      const snap = await getDocs(query(chatCol(id), where("atMs", "<", beforeMs), orderBy("atMs", "desc"), limit(CHAT_PAGE)));
+      return chatList(snap);
     },
 
     /** 공개 대국 목록: 마지막 활동 30분 안, 최근 순 50개 (규칙이 limit 50을 확인) */
