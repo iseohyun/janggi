@@ -7,7 +7,7 @@
 - Firebase 프로젝트: `any-match-hub` (콘솔: https://console.firebase.google.com/project/any-match-hub)
 - 웹 설정값·SDK 버전·백엔드 선택: `module/firebase-config.js` 한 곳
 - 보안 규칙 초안: `firestore.rules` (아직 배포하지 않았습니다)
-- 데이터 위치: `games/janggi/rooms/{방 코드}` 와 그 아래 `moves`, `chat`, 사용자 `games/janggi/users/{uid}`,
+- 데이터 위치: `games/janggi/rooms/{방 코드}` 와 그 아래 `moves`, `chat`, 공개 대국 요약 `games/janggi/lobby/{방 코드}`, 사용자 `games/janggi/users/{uid}`,
   로그인 요청 `games/janggi/loginRequests/{id}`, 남용 방지 기록 `loginEmails`·`loginIps`, 알림 메일 로그아웃 링크 `revokeLinks` (다른 게임과 겹치지 않음)
 - Cloud Functions: `functions/` (codebase 이름 `janggi`, 지역 `asia-northeast3` 서울), 배포 설정 `firebase.json`·`.firebaserc`
 
@@ -70,12 +70,15 @@ Authentication → **Settings** → **승인된 도메인(Authorized domains)** 
 |---|---|
 | 로그인 | Google 또는 이메일 승인형 로그인. 둘 다 이메일이 확인된 사용자라 "인증 전" 구분이 없음. 규칙은 그래도 `email_verified`(또는 Google)를 확인 |
 | 모든 기기에서 로그아웃 | `users/{uid}.revokedAt` 이전에 로그인한 토큰(`auth_time`)은 모든 읽기·쓰기에서 막힘 (요청마다 users 문서 읽기 1번 추가) |
-| 방 만들기 | 로그인한 사용자. 내가 방장이고 한 자리에만 앉음 |
-| 방 문서 | 참가자만 읽기·쓰기. 초대 링크로 들어오는 사람은 **기다리는 방**만 읽고 빈 자리에 자기만 앉을 수 있음. 방 목록 조회는 막음 |
-| 수 (`moves`) | 참가자만 읽기. **자기 차례에 자기 수만**, 방의 수 번호를 정확히 하나 올리면서 추가. 고치기 금지 |
+| 방 만들기 | 로그인한 사용자. 내가 방장이고 한 자리에만 앉음. 공개(`public`)/비공개(`private`)를 고르고(만든 뒤 못 바꿈), 준비(`ready`)는 false로 |
+| 방 문서 | 참가자만 읽기·쓰기. 초대 링크로 들어오는 사람은 **기다리는 방**만 읽고 빈 자리에 자기만 앉을 수 있음(앉기만 하고 시작은 안 함). 방 목록 조회는 막음 |
+| 시작 전 설정 | 상대: **자기 상차림과 준비만**(상차림을 바꾸면 같은 쓰기에서 준비가 풀려야 함), 시작 전 자리에서 나가기. 방장: **자기 상차림·진영(자리 맞바꾸기)·제한 시간**과 시작만. 방장이 바꾸면 준비가 풀려야 함. 시작은 상대가 준비한 뒤에만 |
+| 시작 뒤 | 상차림·진영·제한 시간·준비·공개 여부는 바꿀 수 없음 |
+| 수 (`moves`) | 참가자만 읽기, **공개 방은 누구나(로그인 없이) 읽기**(관전). **자기 차례에 자기 수만**, 방의 수 번호를 정확히 하나 올리면서 추가. 고치기 금지 |
+| 공개 대국 요약 (`lobby`) | 누구나 읽기(로그인 없이), 목록은 **한 번에 50개까지**(`limit` 확인). 쓰기는 Cloud Functions(`syncLobby`·`cleanupLobby`)만 |
 | 무르기 | 방금 자기가 둔 수만 청할 수 있고, 상대만 받아들여 마지막 수를 지울 수 있음 |
 | 대국 끝 | 기권은 자기 패만, 외통은 수를 두면서만, 시간패는 참가자가 기록 |
-| 채팅 (`chat`) | 참가자만 읽기·쓰기, 자기 이름(uid)으로만, **1~300자**, 고치기·지우기 금지 |
+| 채팅 (`chat`) | 참가자만 읽기·쓰기(공개 방의 관전자도 못 읽음), 자기 이름(uid)으로만, **1~300자**, 고치기·지우기 금지 |
 | 사용자 (`users`) | 본인만 읽기(로그인한 기기 목록 포함), 쓰기는 Cloud Functions만 |
 | 로그인 요청 (`loginRequests`), 남용 방지 (`loginEmails`, `loginIps`), 로그아웃 링크 (`revokeLinks`), `mail` | 클라이언트는 읽기·쓰기 모두 금지 (Cloud Functions의 Admin SDK만). 요청자도 승인 여부를 직접 못 읽고 함수로만 물음 |
 
@@ -136,7 +139,7 @@ PC에서 요청하고 휴대폰 메일로 승인해도 되고, 같은 기기에�
 | 승인 링크 주소 | `functions/.env`의 `APP_ORIGINS`(기본 `https://janggi.iseohyun.com`) 또는 `localhost`·`127.0.0.1`(개발). 다른 주소에서 요청하면 거부 |
 | 모든 기기에서 로그아웃 | `revokeAllSessions`: 갱신 토큰 무효 + `users/{uid}.revokedAt`. 규칙·함수가 `auth_time`과 비교 |
 | 함수 | `startEmailLogin`, `getEmailLogin`, `approveEmailLogin`, `denyEmailLogin`, `claimEmailLogin`, `revokeAllSessions`, `noteLogin`, `revokeByLink` (2세대 callable, 서울 지역) |
-| 시험 | `cd functions` → `npm.cmd test` (Firebase 없이 도는 Node 테스트 18개) |
+| 시험 | `cd functions` → `npm.cmd test` (Firebase 없이 도는 Node 테스트 24개, 공개 목록 6개 포함) |
 
 ### 새 기기 로그인 알림
 
@@ -220,6 +223,65 @@ PC에서 요청하고 휴대폰 메일로 승인해도 되고, 같은 기기에�
 Java 11 이상이 있으면: `functions/.env.local`에 `MAIL_PROVIDER=log`를 적고 `functions/.secret.local`에 `MAIL_SECRET=unused`를 적은 뒤
 `firebase emulators:start --only functions,firestore,auth`. 메일 대신 함수 로그에 승인 링크가 찍힙니다.
 (앱을 에뮬레이터에 붙이는 연결 코드는 아직 넣지 않았습니다. 지금은 가짜 백엔드가 같은 규칙으로 화면 흐름을 시험합니다.)
+
+## 8. 방 설정 흐름·공개 대국 목록·관전 (2026-11-21)
+
+### 방 설정 흐름
+
+1. 방장이 왼쪽 서랍 **온라인 대국 → 방 만들기**에서 공개/비공개, 내 진영, 제한 시간, 내 상차림을 고릅니다.
+2. 상대가 초대 링크(또는 열린 대국 목록)로 들어오면 **자리에만 앉습니다**. 방장 설정은 상대 화면에 읽기 전용으로 보이고 판에도 바로 차려집니다.
+3. 시작 전에는 오른쪽 서랍 **새 대국** 탭이 방 설정과 이어집니다.
+   - 아래 줄 상차림은 내 상차림입니다. 위 줄(상대)은 읽기 전용입니다.
+   - 진영과 제한 시간은 방장만 바꿉니다. 방장이 바꾸면 상대의 준비가 풀리고, 채팅에 시스템 알림이 갑니다.
+   - 방장이 진영을 바꾸면 상대 자리와 상대 상차림이 함께 반대쪽으로 옮겨 갑니다.
+   - 상대가 상차림을 바꾸면 자기 준비가 풀립니다.
+4. 상대가 **준비** → 방장이 양쪽 판을 확인하고 **대국 시작**(새 대국 탭의 시작 단추, 단축키 N, 왼쪽 서랍 단추 모두 같음).
+5. 시작 전에 상대가 방을 나가면 자리가 비고, 방은 다시 상대를 기다립니다. 방장이 나가면 방이 닫힙니다.
+
+### 공개 대국 목록·관전
+
+- **공개 방**만 왼쪽 서랍 온라인 영역의 **열린 대국** 목록(로그인 아래)에 올라갑니다. 비공개 방은 초대 링크로만 들어옵니다.
+- 기다리는 방: 방장 이름, 비어 있는 진영, 제한 시간, 방장 상차림, 만든 지 몇 분. 누르면 들어갑니다(로그인 필요. 로그인 전이면 로그인 뒤 바로 들어감).
+- 진행 중 공개 대국: 누르면 **관전**합니다. 로그인 없이 판과 수만 읽기 전용으로 봅니다. 채팅은 보지도 쓰지도 못합니다. 관전 링크는 `?watch=방코드`.
+- 목록 보기와 관전은 로그인 없이 됩니다. 목록은 영역이 화면에 보일 때만 읽습니다(최근 50개, 한 쪽에 5개씩).
+
+### 요약 쓰기 방식 결정: Cloud Functions 동기화
+
+요약 `games/janggi/lobby/{roomId}`는 **함수 `syncLobby`(Firestore 트리거)**가 방 문서가 바뀔 때마다 다시 씁니다. 클라이언트는 lobby에 쓸 수 없습니다.
+
+- 고른 까닭: 방장이 직접 쓰면 요약과 방 문서가 맞는지 규칙이 매번 `get()`으로 비교해야 하고(규칙 식 개수·읽기 비용), 대국 중에는 두 사람이 번갈아 수를 두므로 상대 수 뒤의 요약을 누가 고칠지 정하기 어렵습니다. 함수는 방 문서에서 바로 만들기 때문에 항상 맞고, 요약을 위조할 수 없습니다.
+- 대가: 방 문서 쓰기(수 하나마다)마다 함수가 한 번 돕니다. 목록 반영은 보통 1초 안팎 늦습니다. 관전 화면의 수는 `moves`를 직접 읽으므로 늦지 않습니다.
+- 요약에 담는 것(최소): 방 코드, 상태, 방장 이름·진영, 빈 진영, 두 대국자 이름, 상차림, 제한 시간, 수 번호, 시계, 결과, 만든·시작·마지막 활동 시각. **uid·이메일·채팅은 담지 않습니다.** 규칙은 `functions/lobby-core.js`(가짜 백엔드와 같은 코드).
+- 정리: 마지막 활동(방 문서가 마지막으로 바뀐 때) 뒤 **30분**이 지난 요약은 목록에서 빼고, 예약 함수 `cleanupLobby`가 **10분마다** 지웁니다(방 문서는 그대로).
+  다시 활동이 있으면(예: 방장이 설정을 바꿈) 요약이 다시 생깁니다. 대국 중 한 수에 30분 넘게 생각하면 그동안 목록에서 빠집니다.
+
+### 배포 (사용자가 직접)
+
+웹장기 폴더에서:
+
+```powershell
+firebase deploy --only functions,firestore:rules --project any-match-hub
+```
+
+- 함수는 codebase `janggi`만 올라갑니다(다른 게임 함수는 그대로). 처음 올릴 때 Eventarc·Cloud Scheduler·Pub/Sub API를 켜도 되는지 물으면 "예".
+- **Firestore 트리거는 데이터베이스와 같은 지역이어야 합니다.** 데이터베이스가 서울(`asia-northeast3`)이 아니면 `functions/index.js`의 `LOBBY_REGION`을 데이터베이스 지역으로 바꿔서 올립니다(콘솔 → Firestore → 데이터베이스 위치에서 확인).
+- 규칙을 다른 게임 규칙과 합쳐서 쓰는 경우는 4장과 같습니다. 새로 생긴 `match /games/janggi/lobby/{roomId}`도 함께 합칩니다.
+- 예전(이 기능 전) 방 문서에는 `visibility`·`ready`가 없어 비공개로 취급되고, 기다리던 예전 방은 새 흐름으로 시작할 수 없습니다(새로 만들면 됨).
+
+### 시험
+
+- 공개 목록 요약·정리: `cd functions` → `npm.cmd test`
+- 보안 규칙(에뮬레이터, 허용·거부 13가지): Java 11 이상이 필요합니다(Android Studio의 `jbr` 폴더도 됨). 웹장기 폴더에서
+
+```powershell
+npm.cmd --prefix tools/rules-test install
+```
+
+```powershell
+firebase emulators:exec --only firestore --project demo-janggi "node --test tools/rules-test/rules.test.mjs"
+```
+
+- 화면 흐름: `?backend=fake`로 탭 셋(방장·상대·로그인 안 한 관전자)을 열어 시험합니다. 오래된 방 정리는 콘솔에서 `OnlineFakeBackend.advanceClock(31*60*1000)` 뒤 목록을 다시 엽니다.
 
 ## 알아 둘 점
 

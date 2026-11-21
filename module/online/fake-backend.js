@@ -8,7 +8,10 @@
  *    승인 페이지(online-approve.html?backend=fake)도 이 파일을 읽어 같은 저장소로 승인한다.
  *  - "모든 기기에서 로그아웃"은 같은 계정으로 로그인한 다른 탭을 로그아웃시킨다.
  *  - Firebase 백엔드(firebase-backend.js)와 같은 모양의 함수를 내놓는다. 규칙 검사는 firestore.rules가 하는 것 중
- *    "차례·참가자·수 번호"만 흉내 낸다 (받은 수가 장기 규칙에 맞는지는 받는 쪽 online-core.js가 본다).
+ *    "차례·참가자·수 번호"와 시작 전 방 설정(방장·상대가 쓸 수 있는 칸, roomUpdateAllowed)을 흉내 낸다
+ *    (받은 수가 장기 규칙에 맞는지는 받는 쪽 online-core.js가 본다).
+ *  - 공개 대국 목록: 방을 쓸 때마다 functions/lobby-core.js로 요약(lobby)을 만든다 (Cloud Functions syncLobby 흉내).
+ *    목록을 읽을 때 마지막 활동 뒤 30분 지난 요약을 지운다 (cleanupLobby 흉내). advanceClock(ms)으로 시험한다.
  * 공개: window.OnlineFakeBackend (online-core.js가 고른다)
  * @module online/fake-backend
  */
@@ -29,7 +32,7 @@
     } catch (e) {
       console.warn("[fake-backend] 저장소를 읽지 못해 새로 시작합니다:", e);
     }
-    return { rooms: {}, moves: {}, chat: {}, users: {}, docs: {}, devMail: {} };
+    return { rooms: {}, moves: {}, chat: {}, users: {}, docs: {}, devMail: {}, lobby: {} };
   }
 
   function writeDb(db) {
@@ -260,6 +263,80 @@
     return !!room && room.members.includes(uid);
   }
 
+  const LOBBY_KEY = "__lobby__"; // 목록 구독 이름 (방 id 자리)
+  const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+  const otherSide = s => (s === "cho" ? "han" : "cho");
+  const sideOfUid = (seats, uid) => (seats.cho && seats.cho.uid === uid ? "cho" : "han");
+  const okCharim = c => Number.isInteger(c) && c >= 0 && c <= 3;
+  const FIXED = ["app", "v", "hostUid", "createdAtMs", "createdAt", "charim", "timeLimitMin", "sidePick",
+    "members", "seats", "visibility", "ready"];
+
+  /** firestore.rules의 방 고치기 규칙 중 시작 전 설정·시작·대국 중 고정 칸을 흉내 낸다 (o: 지금, d: 고친 뒤) */
+  function roomUpdateAllowed(o, d, uid) {
+    const keys = Object.keys(Object.assign({}, o, d)).filter(k => !same(o[k], d[k]));
+    const only = list => keys.every(k => list.includes(k));
+    if (!isMember(o, uid)) return false;
+    const host = o.hostUid === uid;
+    if (o.status === "waiting") {
+      if (host) {
+        if (only(["status"]) && d.status === "closed") return true;
+        if (only(["status", "startedAtMs", "lastMoveAtMs"]) && d.status === "playing") {
+          return o.ready === true && o.members.length === 2 && !!o.seats.cho && !!o.seats.han;
+        }
+        const hs = sideOfUid(o.seats, uid);
+        const hs2 = sideOfUid(d.seats, uid);
+        const swapped = same(d.seats.cho, o.seats.han) && same(d.seats.han, o.seats.cho);
+        return only(["charim", "timeLimitMin", "sidePick", "seats", "ready"]) && d.ready === false
+          && (same(d.seats, o.seats) || swapped) && !!d.seats[hs2] && d.seats[hs2].uid === uid
+          && d.charim[otherSide(hs2)] === o.charim[otherSide(hs)] && okCharim(d.charim[hs2])
+          && Number.isInteger(d.timeLimitMin) && d.timeLimitMin >= 0 && d.timeLimitMin <= 180
+          && ["cho", "han", "random"].includes(d.sidePick);
+      }
+      const s = sideOfUid(o.seats, uid);
+      if (only(["charim", "ready"])) {
+        return d.charim[otherSide(s)] === o.charim[otherSide(s)] && okCharim(d.charim[s])
+          && typeof d.ready === "boolean" && (d.charim[s] === o.charim[s] || d.ready === false);
+      }
+      return only(["seats", "members", "ready"]) && same(d.members, [o.hostUid]) && d.seats[s] === null
+        && same(d.seats[otherSide(s)], o.seats[otherSide(s)]) && d.ready === false;
+    }
+    return !keys.some(k => FIXED.includes(k)); // 대국 중·끝: 방 설정은 못 바꾼다 (차례 등은 addMove 등이 본다)
+  }
+
+  /** 방을 쓴 뒤 공개 요약을 맞춘다 (Cloud Functions syncLobby 흉내) */
+  function syncLobby(db, id) {
+    if (!window.LobbyCore) return;
+    db.lobby = db.lobby || {};
+    const summary = window.LobbyCore.summarize(db.rooms[id] || null, id, fakeNow());
+    if (summary) db.lobby[id] = summary;
+    else delete db.lobby[id];
+  }
+
+  function saveRoom(db, id, movesChanged) {
+    syncLobby(db, id);
+    writeDb(db);
+    if (movesChanged) notify(id, "moves");
+    notify(id, "room");
+    notify(id, "lobby");
+    notify(LOBBY_KEY, "lobby");
+  }
+
+  /** 목록 읽기: 오래된 요약을 지우고(cleanupLobby 흉내) 최근 활동 순으로 50개 */
+  function readLobby() {
+    const db = readDb();
+    const lobby = db.lobby || {};
+    const now = fakeNow();
+    let removed = false;
+    Object.keys(lobby).forEach(id => {
+      if (window.LobbyCore.isStale(lobby[id], now)) {
+        delete lobby[id];
+        removed = true;
+      }
+    });
+    if (removed) writeDb(db);
+    return Object.values(lobby).map(clone).sort((a, b) => b.activeAtMs - a.activeAtMs).slice(0, window.LobbyCore.PAGE_LIMIT);
+  }
+
   const api = {
     kind: "fake",
     label: "가짜 백엔드 (이 브라우저의 탭끼리)",
@@ -275,8 +352,7 @@
         db.rooms[id] = clone(room);
         db.moves[id] = {};
         db.chat[id] = [];
-        writeDb(db);
-        notify(id, "room");
+        saveRoom(db, id);
         return id;
       });
     },
@@ -297,8 +373,7 @@
         const next = change(clone(room), user);
         if (next) {
           db.rooms[id] = next;
-          writeDb(db);
-          notify(id, "room");
+          saveRoom(db, id);
         }
         return clone(db.rooms[id]);
       });
@@ -309,9 +384,10 @@
         const db = readDb();
         const room = db.rooms[id];
         if (!isMember(room, uid)) throw fail("permission-denied");
-        Object.assign(room, clone(patch));
-        writeDb(db);
-        notify(id, "room");
+        const next = Object.assign(clone(room), clone(patch));
+        if (!roomUpdateAllowed(room, next, uid)) throw fail("permission-denied", "보안 규칙(흉내)에 막혔습니다");
+        db.rooms[id] = next;
+        saveRoom(db, id);
       });
     },
 
@@ -327,9 +403,7 @@
         if (!room.seats[side] || room.seats[side].uid !== uid) throw fail("permission-denied", "차례가 아닙니다");
         db.moves[id][String(move.ply)] = clone(move);
         Object.assign(room, clone(roomPatch || {}), { ply: move.ply + 1 });
-        writeDb(db);
-        notify(id, "moves");
-        notify(id, "room");
+        saveRoom(db, id, true);
       });
     },
 
@@ -343,9 +417,7 @@
         if (!room.undo || room.undo.by === uid) throw fail("permission-denied");
         delete db.moves[id][String(expectedPly - 1)];
         Object.assign(room, clone(roomPatch || {}), { ply: expectedPly - 1, undo: null });
-        writeDb(db);
-        notify(id, "moves");
-        notify(id, "room");
+        saveRoom(db, id, true);
       });
     },
 
@@ -377,6 +449,29 @@
 
     watchChat(id, cb) {
       return watch(id, "chat", () => clone(readDb().chat[id] || []), cb);
+    },
+
+    /** 공개 대국 목록 (최근 활동 순 50개, 로그인 없이) */
+    watchLobby(cb) {
+      return watch(LOBBY_KEY, "lobby", readLobby, cb);
+    },
+
+    /** 관전: 공개 방 하나의 요약 (없거나 비공개면 null) */
+    watchLobbyRoom(id, cb) {
+      return watch(id, "lobby", () => {
+        const s = (readDb().lobby || {})[id];
+        return s && !window.LobbyCore.isStale(s, fakeNow()) ? clone(s) : null;
+      }, cb);
+    },
+
+    /** 관전: 공개 방의 수 (firestore.rules: 공개 방의 moves는 누구나 읽음, 비공개는 참가자만) */
+    watchPublicMoves(id, cb) {
+      return watch(id, "moves", () => {
+        const db = readDb();
+        const room = db.rooms[id];
+        if (!room || room.visibility !== "public") return [];
+        return Object.values(db.moves[id] || {}).map(clone).sort((a, b) => a.ply - b.ply);
+      }, cb);
     },
 
     /** 개발용: 저장소 비우기 (콘솔에서 OnlineFakeBackend.reset()) */

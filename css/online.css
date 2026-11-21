@@ -597,6 +597,48 @@ html.ol-eval-off #hg-eval-row {
 }
 
 /* 로그인한 기기 (online-ui.js olRenderDevices) */
+/* 계정 구분표 (가린 이메일) */
+.ol-id-tag {
+  font-weight: 500;
+  font-size: 0.85em;
+  color: var(--color-text-secondary);
+  word-break: break-all;
+}
+
+/* 방 만들기 (접기) */
+.ol-create-sum {
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ol-create-sum::-webkit-details-marker {
+  display: none;
+}
+
+.ol-create-sum::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(-45deg);
+  transition: transform 0.15s ease;
+}
+
+.ol-create[open] > .ol-create-sum::before {
+  transform: rotate(45deg);
+}
+
+.ol-create-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+
 .ol-devices {
   font-size: 12px;
 }
@@ -633,4 +675,177 @@ html.ol-eval-off #hg-eval-row {
   color: #86efac;
   font-size: 10.5px;
   font-weight: 700;
+}
+
+/* ===== 시작 전 방 설정·열린 대국 목록 (online-ui.js olRenderSetup·olRenderOpen·olRenderNewGamePanel) ===== */
+.ol-seat {
+  flex-wrap: wrap;
+  row-gap: 4px;
+}
+
+.ol-seat-charim {
+  font-size: 11px;
+  color: var(--color-text-secondary);
+}
+
+.ol-ready {
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--color-text-muted, var(--color-text-secondary));
+}
+
+.ol-ready.on {
+  background: rgba(34, 197, 94, 0.18);
+  color: #86efac;
+}
+
+.ol-setup {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ol-setup .ol-row {
+  flex-wrap: wrap;
+}
+
+.ol-vis {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+}
+
+.ol-vis small {
+  color: var(--color-text-muted, var(--color-text-secondary));
+}
+
+.ol-open {
+  gap: 8px;
+}
+
+.ol-open-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ol-open-title {
+  margin: 0;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--color-text-secondary);
+}
+
+.ol-open-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ol-open-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 8px;
+  width: 100%;
+  min-width: 0;
+  padding: 7px 9px;
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--color-text-primary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+
+.ol-open-item:hover,
+.ol-open-item:focus-visible {
+  background: var(--color-bg-hover);
+  border-color: var(--color-primary);
+}
+
+.ol-open-item b {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.ol-open-item small {
+  flex-basis: 100%;
+  font-size: 11px;
+  color: var(--color-text-secondary);
+}
+
+.ol-open-side {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-cho-blue);
+}
+
+.ol-open-side.han {
+  color: var(--color-han-red);
+}
+
+.ol-pager {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  font-size: 11.5px;
+  color: var(--color-text-secondary);
+}
+
+.ol-pager:empty {
+  display: none;
+}
+
+/* 오른쪽 서랍 '새 대국' 탭 위 온라인 방 안내 */
+.ol-ng-panel {
+  margin: 0 0 10px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  background: rgba(59, 130, 246, 0.14);
+  color: #bfdbfe;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.ol-ng-panel[hidden] {
+  display: none;
+}
+
+/* 방에 있는 동안: AI 대국·엔진 고르기와 대국 규칙은 쓰지 않는다 */
+#rd-sec-newgame.ol-ng-room .restart-options,
+#rd-sec-newgame.ol-ng-room .rule-options {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+/* 제한 시간은 방장만 고친다 (시작 전, 방장일 때만 살림) */
+#rd-sec-newgame.ol-ng-setup:not(.ol-ng-guest) .restart-options:not(.rule-options) {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+#rd-sec-newgame.ol-ng-setup:not(.ol-ng-guest) .restart-options:not(.rule-options) tr:not(:has(#time-limit-select)) {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+/* 상대 상차림(위 줄)은 읽기 전용, 상대(손님)는 진영도 읽기 전용, 시작 뒤·관전은 모두 읽기 전용 */
+#rd-sec-newgame.ol-ng-room .charim1,
+#rd-sec-newgame.ol-ng-guest .nation-btn,
+#rd-sec-newgame.ol-ng-room:not(.ol-ng-setup) .charim0,
+#rd-sec-newgame.ol-ng-room:not(.ol-ng-setup) .nation-btn {
+  cursor: not-allowed;
+  opacity: 0.6;
 }

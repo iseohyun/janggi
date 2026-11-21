@@ -71,6 +71,7 @@ body {
   justify-content: center;
   width: 100vw;
   height: 100vh;
+  height: 100dvh; /* 휴대폰: 주소창·도구 막대를 뺀 실제 보이는 높이 (모르는 브라우저는 위 100vh) */
   box-sizing: border-box;
   overflow: hidden;
   position: relative;

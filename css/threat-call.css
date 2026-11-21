@@ -25,6 +25,9 @@
   font-family: "Pretendard", "Noto Sans KR", "Malgun Gothic", sans-serif;
 }
 
+.tc-clickable { cursor: pointer; }
+.tc-clickable:hover .tc-bubble-box { stroke: #ffffff; stroke-width: 2.5; }
+
 @keyframes tc-pop {
   from { transform: scale(0.6); opacity: 0; }
   to { transform: scale(1); opacity: 1; }

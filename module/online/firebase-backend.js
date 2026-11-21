@@ -8,6 +8,8 @@
  *    로그인 정보는 같은 출처의 IndexedDB를 거쳐 이 창으로 넘어온다. 이 창의 Auth는 iframe이 필요 없는
  *    initializeAuth(팝업·리다이렉트 해석기 없이)로 만든다.
  *  - 데이터 경로: games/janggi/rooms/{roomId}, 그 아래 moves/{ply}, chat/{자동 id}. 규칙은 firestore.rules.
+ *  - 공개 대국 목록: games/janggi/lobby/{roomId} (Cloud Functions syncLobby가 방 문서에서 만든 요약, 누구나 읽기).
+ *    목록은 마지막 활동 30분 안의 것만 최근 순 50개(LobbyCore). 관전은 요약 + 공개 방의 moves만 읽는다(채팅은 못 읽음).
  *  - 이메일 로그인(다른 기기 승인형, 비밀번호 없음): Cloud Functions(functions/, 지역 asia-northeast3)
  *    startEmailLogin으로 승인 메일을 보내고, claimEmailLogin으로 승인됐는지 묻다가 받은 custom token으로
  *    signInWithCustomToken 한다. "모든 기기에서 로그아웃"은 revokeAllSessions.
@@ -34,7 +36,7 @@ export async function createFirebaseBackend(config, sdkVersion) {
     signInWithCustomToken, signOut
   } = authMod;
   const {
-    initializeFirestore, doc, collection, getDoc, onSnapshot, query, orderBy, limit,
+    initializeFirestore, doc, collection, getDoc, onSnapshot, query, orderBy, limit, where,
     runTransaction, updateDoc, addDoc, serverTimestamp
   } = fsMod;
 
@@ -58,6 +60,8 @@ export async function createFirebaseBackend(config, sdkVersion) {
   const roomRef = id => doc(db, "games", "janggi", "rooms", id);
   const movesCol = id => collection(roomRef(id), "moves");
   const chatCol = id => collection(roomRef(id), "chat");
+  const lobbyCol = () => collection(db, "games", "janggi", "lobby");
+  const LC = window.LobbyCore || { STALE_MS: 30 * 60 * 1000, PAGE_LIMIT: 50 };
 
   const toUser = u => u && {
     uid: u.uid,
@@ -245,6 +249,26 @@ export async function createFirebaseBackend(config, sdkVersion) {
       return onSnapshot(query(chatCol(id), orderBy("atMs", "desc"), limit(300)),
         snap => cb(snap.docs.map(d => Object.assign({ id: d.id }, d.data())).reverse()),
         err => console.error("[online] 채팅 구독 오류:", err));
+    },
+
+    /** 공개 대국 목록: 마지막 활동 30분 안, 최근 순 50개 (규칙이 limit 50을 확인) */
+    watchLobby(cb) {
+      const q = query(lobbyCol(), where("activeAtMs", ">=", Date.now() - LC.STALE_MS),
+        orderBy("activeAtMs", "desc"), limit(LC.PAGE_LIMIT));
+      return onSnapshot(q, snap => cb(snap.docs.map(d => d.data())),
+        err => console.error("[online] 열린 대국 목록 구독 오류:", err));
+    },
+
+    /** 관전: 공개 방 하나의 요약 (없으면 null) */
+    watchLobbyRoom(id, cb) {
+      return onSnapshot(doc(lobbyCol(), id), snap => cb(snap.exists() ? snap.data() : null),
+        err => console.error("[online] 관전 요약 구독 오류:", err));
+    },
+
+    /** 관전: 공개 방의 수 (규칙: 공개 방 moves는 누구나 읽음) */
+    watchPublicMoves(id, cb) {
+      return onSnapshot(query(movesCol(id), orderBy("ply")), snap => cb(snap.docs.map(d => d.data())),
+        err => console.error("[online] 관전 수 구독 오류:", err));
     }
   };
   return api;

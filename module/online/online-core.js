@@ -9,9 +9,16 @@
  *  - 시계: 두는 사람이 자기 화면에서 잰 생각 시간을 수와 함께 보낸다 (기기마다 시계가 달라도 어긋나지 않게).
  *    제한 시간을 넘기면 자기 화면이 시간패를 알리고, 상대 화면은 5초 더 기다린 뒤 알린다 (olTick).
  *  - 대국 중에는 판을 바꾸는 다른 기능(새 대국·진영 바꾸기·기보 불러오기·AI 대국)을 막는다. 놓아보기(가지)는 쓸 수 있다.
- * 공개: olBackend, olUser, olRoom, olRoomId, olMySide, olGameActive(), olLocked(), olIsMyTurn(), olSideName(side),
+ *  - 시작 전(status "waiting") 방 설정: 방장은 자기 상차림·진영·제한 시간, 상대는 자기 상차림과 준비만 바꾼다.
+ *    방장이 설정을 바꾸면 상대의 준비가 풀리고 채팅에 시스템 알림이 간다. 상대가 준비하면 방장이 시작한다.
+ *    양쪽 판에는 지금 설정이 바로 차려진다(olSetupBoard). 오른쪽 서랍 '새 대국' 탭이 이 설정을 고친다(online-guard.js).
+ *  - 공개 방은 열린 대국 목록(games/janggi/lobby, functions/lobby-core.js)에 올라간다. 목록 보기와 관전은 로그인 없이 된다.
+ *    관전(olSpectate)은 요약과 수만 읽는다(채팅은 읽지도 쓰지도 못함). 관전 중 olSpectating = true, olMySide = null.
+ * 공개: olBackend, olUser, olRoom, olRoomId, olMySide, olSpectating, olGameActive(), olLocked(), olIsMyTurn(), olSideName(side),
  *       olCreateRoom(opts), olJoinRoom(id), olLeaveRoom(), olSendChat(text), olSystem(text), olResign(),
- *       olRequestUndo(), olAnswerUndo(accept), olInviteLink(), olAuth (로그인 함수 모음)
+ *       olRequestUndo(), olAnswerUndo(accept), olInviteLink(), olAuth (로그인 함수 모음),
+ *       olAmHost(), olInSetup(), olGuestSeated(), olSetMyCharim(k), olSetHostSettings({side, timeLimitMin}),
+ *       olSetReady(on), olStartGame(), olSpectate(id), olWatchLobby(cb)
  * @module online/online-core
  * @depends state, rules, board, ai, main, ui, header-graph, preview, firebase-config, online/fake-backend
  *          (online-ui.js가 화면을, online-ai.js가 AI 기능 끄고 켜기를 맡는다)
@@ -24,13 +31,15 @@ const OL_CHAT_MAX = 300; // 채팅 한 줄 최대 글자 수 (firestore.rules와
 const OL_NAME_MAX = 40;
 const OL_TIMEOUT_GRACE_S = 5; // 상대 시간패를 알리기 전에 더 기다리는 시간 (네트워크 늦음 대비)
 const OL_REASON_KO = { checkmate: "외통수", resign: "기권", timeout: "시간패", doublePass: "연속 한수쉼" };
+const OL_CHARIM_KO = ["마상마상", "마상상마", "상마마상", "상마상마"];
 
 var olBackend = null;
 var olBackendError = null;
 var olUser = null;
 var olRoomId = null;
 var olRoom = null;
-var olMySide = null; // "cho" | "han"
+var olMySide = null; // "cho" | "han" (관전 중에는 null)
+var olSpectating = false; // 공개 대국을 관전하는 중 (olRoomId = 관전하는 방)
 var olMoves = []; // 서버의 수 목록 (ply 순)
 var olChat = []; // 채팅 목록
 let olSynced = []; // 이 화면 판에 둔 수 (초 기준 좌표) - log와 같은 길이
@@ -39,6 +48,8 @@ let olApplying = false; // 받은 수를 두는 중 (move 감싸기가 통과시
 let olBypass = false; // 이 모듈이 막아 둔 함수를 직접 부르는 중
 let olBoardReady = false;
 let olPrevStatus = null;
+let olSetupKey = ""; // 판을 차린 설정 (시작 전 설정이 바뀌면 다시 차린다)
+let olPrevMembers = 0;
 let olSaved = null; // 방에 들어가기 전 설정 {aiMode, iAmCho, timeLimitMinutes, newGameState}
 let olUnsubs = [];
 let olTimeoutSent = false;
@@ -124,10 +135,11 @@ function olInviteLink(id) {
   return url.toString();
 }
 
-function olSetUrlRoom(id) {
+function olSetUrlRoom(id, param) {
   const url = new URL(window.location.href);
-  if (id) url.searchParams.set("room", id);
-  else url.searchParams.delete("room");
+  url.searchParams.delete("room");
+  url.searchParams.delete("watch");
+  if (id) url.searchParams.set(param || "room", id);
   window.history.replaceState({}, "", url.toString());
 }
 
@@ -149,6 +161,7 @@ function olErrorText(err) {
     "room-full": "이미 두 사람이 들어간 방입니다.",
     "room-closed": "닫힌 방입니다.",
     "permission-denied": "권한이 없습니다. 이미 두 사람이 있는 방이거나 보안 규칙에 막혔습니다.",
+    "not-ready": "상대가 아직 준비하지 않았습니다.",
     "aborted": "다른 수가 먼저 들어왔습니다.",
     "unavailable": "서버에 닿지 않습니다. 인터넷 연결을 확인해 주세요."
   };
@@ -186,8 +199,11 @@ async function olInitBackend() {
     olUser = user || null;
     olEmit("auth");
     if (olUser && olUser.uid !== prev) olAutoJoinFromUrl();
-    if (!olUser && olRoomId) olLeaveLocal();
+    if (!olUser && olRoomId && !olSpectating) olLeaveLocal();
   });
+  // 관전 링크(?watch=)는 로그인 없이 바로 본다
+  const watch = olCleanCode(new URLSearchParams(window.location.search).get("watch"));
+  if (watch) olSpectate(watch).catch(e => olToast(`관전하지 못했습니다: ${olErrorText(e)}`, 3500));
 }
 
 /**
@@ -260,7 +276,31 @@ function olLocked() {
 }
 
 function olIsMyTurn() {
-  return olGameActive() && olSideOfPly(log.length) === olMySide && olTurnStep() === log.length;
+  return olGameActive() && !olSpectating && olSideOfPly(log.length) === olMySide && olTurnStep() === log.length;
+}
+
+/** 내가 방장 (관전 중이면 아님) */
+function olAmHost() {
+  return !!(olRoom && olUser && !olSpectating && olRoom.hostUid === olUser.uid);
+}
+
+/** 시작 전 방 설정 중 (참가자) */
+function olInSetup() {
+  return !!(olRoomId && olRoom && !olSpectating && olRoom.status === "waiting");
+}
+
+/** 두 자리가 다 찼다 */
+function olGuestSeated() {
+  return !!(olRoom && olRoom.seats.cho && olRoom.seats.han);
+}
+
+/** 판을 볼 진영 (관전은 초가 아래) */
+function olViewSide() {
+  return olSpectating ? "cho" : olMySide;
+}
+
+function olSideOfUid(room, uid) {
+  return room.seats.cho && room.seats.cho.uid === uid ? "cho" : "han";
 }
 
 /** 기물 i(이 화면 번호)가 내 기물인지. 0~15는 아래쪽, 아래쪽은 iAmCho면 초 */
@@ -276,24 +316,32 @@ function olInPreview() {
 
 // ===== 방 만들기·입장·나가기 =====
 
+function olPickSide(pick) {
+  return pick === "random" ? (crypto.getRandomValues(new Uint8Array(1))[0] % 2 ? "han" : "cho") : pick;
+}
+
 /**
- * @param {{side: "cho"|"han"|"random", timeLimitMin: number, charim: {cho: number, han: number}}} opts
+ * @param {{side: "cho"|"han"|"random", timeLimitMin: number, charim: number, visibility: "public"|"private"}} opts
+ *   charim = 내 상차림 (상대 상차림은 상대가 들어와서 고른다)
  */
 async function olCreateRoom(opts) {
   if (!olUser) throw Object.assign(new Error("로그인이 필요합니다"), { code: "auth/required" });
   if (olRoomId) await olLeaveRoom(true);
-  const side = opts.side === "random" ? (crypto.getRandomValues(new Uint8Array(1))[0] % 2 ? "han" : "cho") : opts.side;
-  const me = { uid: olUser.uid, name: olUser.name.slice(0, OL_NAME_MAX) };
+  const side = olPickSide(opts.side);
+  const mine = Math.max(0, Math.min(3, opts.charim | 0));
+  const me = { uid: olUser.uid, name: olUser.name.slice(0, OL_NAME_MAX), tag: olEmailTag(olUser.email) };
   const now = Date.now();
   const room = {
     app: "janggi",
-    v: 1,
+    v: 2,
+    visibility: opts.visibility === "public" ? "public" : "private",
+    ready: false,
     hostUid: olUser.uid,
     createdAtMs: now,
     status: "waiting",
     seats: { cho: side === "cho" ? me : null, han: side === "han" ? me : null },
     members: [olUser.uid],
-    charim: { cho: opts.charim.cho | 0, han: opts.charim.han | 0 },
+    charim: { cho: side === "cho" ? mine : 0, han: side === "han" ? mine : 0 },
     timeLimitMin: Math.max(0, Math.min(180, opts.timeLimitMin | 0)),
     sidePick: opts.side,
     ply: 0,
@@ -317,6 +365,20 @@ async function olCreateRoom(opts) {
   return id;
 }
 
+/**
+ * 계정 구분표: 가린 이메일 (예: iseohyun@hanmail.net → ise***@hanmail.net).
+ * 계정은 이메일마다 따로(uid)이므로, 이름이 같아도 이 표로 누구인지 구별한다. 전체 주소는 남에게 보이지 않는다.
+ * @param {string} email
+ * @returns {string} 이메일이 없으면 ""
+ */
+function olEmailTag(email) {
+  const at = typeof email === "string" ? email.lastIndexOf("@") : -1;
+  if (at < 1) return "";
+  const local = email.slice(0, at);
+  const keep = Math.min(3, Math.ceil(local.length / 2));
+  return `${local.slice(0, keep)}***${email.slice(at)}`.slice(0, 80);
+}
+
 /** 링크·코드로 입장. 빈 자리가 있으면 앉고, 이미 참가자면 다시 들어간다. */
 async function olJoinRoom(rawId) {
   const id = olCleanCode(rawId);
@@ -328,14 +390,11 @@ async function olJoinRoom(rawId) {
   const room = await olBackend.joinRoom(id, olUser, (r, user) => {
     if (r.members.includes(user.uid)) return null; // 다시 들어옴
     if (r.status === "closed") throw Object.assign(new Error("닫힌 방"), { code: "room-closed" });
-    if (r.status !== "waiting") throw Object.assign(new Error("가득 찬 방"), { code: "room-full" });
+    if (r.status !== "waiting" || (r.seats.cho && r.seats.han)) throw Object.assign(new Error("가득 찬 방"), { code: "room-full" });
     const side = r.seats.cho ? "han" : "cho";
-    const now = Date.now();
-    r.seats[side] = { uid: user.uid, name: user.name.slice(0, OL_NAME_MAX) };
+    // 자리에만 앉는다. 상차림을 고르고 준비하면 방장이 시작한다 (firestore.rules joining·guestSetup·hostStart)
+    r.seats[side] = { uid: user.uid, name: user.name.slice(0, OL_NAME_MAX), tag: olEmailTag(user.email) };
     r.members = r.members.concat([user.uid]);
-    r.status = "playing";
-    r.startedAtMs = now;
-    r.lastMoveAtMs = now;
     how = "join";
     return r;
   });
@@ -343,19 +402,20 @@ async function olJoinRoom(rawId) {
   return id;
 }
 
-async function olEnterRoom(id, room, how) {
+/** 방에 들어가기 전 상태를 비우고, 들어가기 전 설정을 한 번만 기억한다 */
+function olResetRoomState(id, room) {
   olRoomId = id;
   olRoom = room;
-  olMySide = room.seats.cho && room.seats.cho.uid === olUser.uid ? "cho" : "han";
   olMoves = [];
   olChat = [];
   olSynced = [];
   olPending = null;
   olBoardReady = false;
+  olSetupKey = "";
   olPrevStatus = null;
+  olPrevMembers = room ? room.members.length : 0;
   olTimeoutSent = false;
   olRejected = new Set();
-  olSetUrlRoom(id);
   if (!olSaved) {
     olSaved = {
       aiMode,
@@ -365,6 +425,13 @@ async function olEnterRoom(id, room, how) {
     };
   }
   if (typeof olAiEnterRoom === "function") olAiEnterRoom(id);
+}
+
+async function olEnterRoom(id, room, how) {
+  olSpectating = false;
+  olResetRoomState(id, room);
+  olMySide = olSideOfUid(room, olUser.uid);
+  olSetUrlRoom(id);
   olUnsubs.push(olBackend.watchRoom(id, olOnRoom));
   olUnsubs.push(olBackend.watchMoves(id, list => {
     olMoves = list;
@@ -377,25 +444,89 @@ async function olEnterRoom(id, room, how) {
   olEmit("enter");
   const me = `${olSideName(olMySide)} 대국자 ${olUser.name}`;
   if (how === "create") olSystem(`${me}님이 방을 만들었습니다.`);
-  else if (how === "join") olSystem(`${me}님이 들어왔습니다. 대국을 시작합니다. 초가 먼저 둡니다.`);
+  else if (how === "join") olSystem(`${me}님이 들어왔습니다. 상차림을 고르고 준비를 누르면 방장이 대국을 시작합니다.`);
   else olSystem(`${me}님이 다시 들어왔습니다.`);
+}
+
+/**
+ * 공개 대국 관전 (로그인 없이). 공개 요약과 수만 읽는다. 채팅은 읽지 않는다.
+ * @param {string} rawId
+ */
+async function olSpectate(rawId) {
+  const id = olCleanCode(rawId);
+  if (!id) throw Object.assign(new Error("코드를 확인해 주세요"), { code: "not-found" });
+  if (!olBackend || !olBackend.watchLobbyRoom) throw new Error("온라인 연결 준비 중입니다");
+  if (olRoomId === id && olSpectating) return id;
+  if (olRoomId) await olLeaveRoom(true);
+  olSpectating = true;
+  olMySide = null;
+  olResetRoomState(id, null);
+  olSetUrlRoom(id, "watch");
+  olUnsubs.push(olBackend.watchLobbyRoom(id, s => olOnRoom(s ? olRoomFromSummary(s) : null)));
+  olUnsubs.push(olBackend.watchPublicMoves(id, list => {
+    olMoves = list;
+    olReconcile();
+  }));
+  olEmit("enter");
+  return id;
+}
+
+/** 공개 요약(functions/lobby-core.js) → 이 파일이 쓰는 방 모양 (uid 없음) */
+function olRoomFromSummary(s) {
+  const tags = s.tags || {};
+  const seat = (n, side) => (n ? { uid: "", name: n, tag: tags[side] || "" } : null);
+  return {
+    app: "janggi",
+    visibility: "public",
+    status: s.status,
+    hostUid: "",
+    members: [],
+    seats: { cho: seat(s.players.cho, "cho"), han: seat(s.players.han, "han") },
+    charim: s.charim,
+    timeLimitMin: s.timeLimitMin,
+    sidePick: "",
+    ready: false,
+    ply: s.ply,
+    clock: s.clock,
+    lastMoveAtMs: s.lastMoveAtMs,
+    startedAtMs: s.startedAtMs,
+    createdAtMs: s.createdAtMs,
+    undo: null,
+    result: s.result
+  };
+}
+
+/** 공개 대국 목록 구독 (로그인 없이). cb(list) → 끊는 함수 */
+function olWatchLobby(cb) {
+  if (!olBackend || !olBackend.watchLobby) return () => {};
+  return olBackend.watchLobby(cb);
 }
 
 /** 방 문서가 바뀔 때 */
 function olOnRoom(room) {
   if (!olRoomId) return;
   if (!room) {
-    olToast("방이 없어졌습니다.");
+    olToast(olSpectating ? "관전하던 대국이 열린 대국 목록에서 사라졌습니다." : "방이 없어졌습니다.");
     olLeaveLocal();
     return;
   }
   olRoom = room;
+  if (!olSpectating && olUser) olMySide = olSideOfUid(room, olUser.uid); // 방장이 진영을 바꾸면 자리가 옮겨 간다
+  const key = olSetupKeyOf(room);
   if (!olBoardReady) {
-    olSetupBoard(room);
+    olSetupBoard(room, false);
     olBoardReady = true;
     olReconcile();
     olRestoreClock(room);
+  } else if (room.status === "waiting" && key !== olSetupKey) {
+    olSetupBoard(room, true); // 시작 전 설정이 바뀌면 판을 다시 차린다 (상대 상차림을 실시간으로)
   }
+  // 시작 전: 상대가 들어오거나 나가면 방장에게 알린다
+  const n = room.members.length;
+  if (!olSpectating && room.status === "waiting" && n !== olPrevMembers && olAmHost()) {
+    olToast(n > olPrevMembers ? "상대가 들어왔습니다. 상대가 준비하면 시작할 수 있습니다." : "상대가 자리에서 나갔습니다.", 3000);
+  }
+  olPrevMembers = n;
   olSyncNames(room);
   const status = room.status;
   if (olPrevStatus !== status) {
@@ -405,7 +536,7 @@ function olOnRoom(room) {
       gameEnded = false;
       if (was === "waiting") {
         if (typeof initGameTimer === "function") initGameTimer();
-        olToast("상대가 들어왔습니다. 대국을 시작합니다.");
+        olToast("대국을 시작합니다. 초가 먼저 둡니다.");
       }
       if (typeof olAiStartGame === "function") olAiStartGame();
     } else {
@@ -428,18 +559,74 @@ function olResultText(room) {
   return `${olSideName(r.winner)} 승 (${reason})`;
 }
 
-/** 방 설정(내 진영·상차림·제한 시간)대로 판을 새로 차린다 */
-function olSetupBoard(room) {
+function olSetupKeyOf(room) {
+  return `${olViewSide()}|${room.charim.cho}|${room.charim.han}|${room.timeLimitMin}`;
+}
+
+/** 제한 시간 고르기 칸을 방 값에 맞춘다 (저장하지 않음) */
+function olSyncTimeSelect(min) {
+  const sel = document.getElementById("time-limit-select");
+  if (!sel) return;
+  const v = String(min || 0);
+  if (![...sel.options].some(o => o.value === v)) {
+    const o = document.createElement("option");
+    o.value = v;
+    o.textContent = `${v}분`;
+    sel.appendChild(o);
+  }
+  sel.value = v;
+}
+
+/**
+ * 방 설정(내 진영·상차림·제한 시간)대로 판을 새로 차린다.
+ * @param {Object} room
+ * @param {boolean} light - 시작 전 설정만 바뀐 경우: 서랍·기보 정보는 그대로 두고 기물만 다시 놓는다
+ */
+function olSetupBoard(room, light) {
+  olSetupKey = olSetupKeyOf(room);
+  const view = olViewSide();
+  const amCho = view === "cho";
+  if (light) {
+    olBypass = true;
+    try {
+      const flip = iAmCho !== amCho;
+      if (flip) changeNation(amCho);
+      newGameState[0] = room.charim[view] | 0;
+      newGameState[1] = room.charim[olOther(view)] | 0;
+      if (typeof syncCharimButtonStyles === "function") syncCharimButtonStyles();
+      log.length = 0;
+      const turnEl = document.getElementById("turn");
+      if (turnEl) turnEl.value = 0;
+      applyLayoutCode(getStartingLayoutCode());
+      curSelect = NO_PIECE;
+      clearCandiBox();
+      if (typeof svg !== "undefined" && svg) svg.classList.add("no-transition");
+      if (flip && typeof initBoard === "function") initBoard();
+      initPositions();
+      if (typeof svg !== "undefined" && svg) {
+        svg.offsetHeight; // 바로 자리잡기
+        svg.classList.remove("no-transition");
+      }
+      if (typeof updateScore === "function") updateScore();
+    } finally {
+      olBypass = false;
+    }
+    olSynced = [];
+    timeLimitMinutes = room.timeLimitMin || 0;
+    olSyncTimeSelect(timeLimitMinutes);
+    if (typeof hgUpdateTime === "function") hgUpdateTime();
+    return;
+  }
   if (typeof isPreviewActive === "function" && isPreviewActive() && typeof exitPreviewMode === "function") exitPreviewMode();
   if (typeof isAutoplayActive !== "undefined" && isAutoplayActive && typeof stopAutoplay === "function") stopAutoplay();
-  const amCho = olMySide === "cho";
   // 새 대국 차리기(startNewGame)가 오른쪽 서랍을 닫으므로, 열려 있었으면 채팅 영역으로 다시 연다
   const rightWasOpen = typeof isRightDrawerOpen === "function" && isRightDrawerOpen();
+  const rightTab = typeof drawerActiveTab !== "undefined" ? drawerActiveTab.right : "";
   olBypass = true;
   try {
     if (iAmCho !== amCho) changeNation(amCho);
-    newGameState[0] = room.charim[olMySide] | 0;
-    newGameState[1] = room.charim[olOther(olMySide)] | 0;
+    newGameState[0] = room.charim[view] | 0;
+    newGameState[1] = room.charim[olOther(view)] | 0;
     if (typeof syncCharimButtonStyles === "function") syncCharimButtonStyles();
     aiMode = 0;
     if (typeof aiSidePref !== "undefined") aiSidePref = null;
@@ -448,11 +635,15 @@ function olSetupBoard(room) {
     olBypass = false;
   }
   timeLimitMinutes = room.timeLimitMin || 0; // 저장하지 않는다 (나가면 되돌림)
-  gameMetadata.tournament = "온라인 대국";
+  olSyncTimeSelect(timeLimitMinutes);
+  gameMetadata.tournament = olSpectating ? "온라인 대국 (관전)" : "온라인 대국";
   gameMetadata.round = `방 ${olRoomId}`;
   olSynced = [];
   gameEnded = room.status !== "playing";
-  if (rightWasOpen && typeof jumpToDrawerSection === "function") jumpToDrawerSection("ol-sec-chat");
+  // 시작 전에 '새 대국' 탭을 보고 있었으면 그대로, 아니면 채팅으로 (관전자는 채팅이 없으므로 보던 탭 그대로)
+  if (rightWasOpen && typeof jumpToDrawerSection === "function") {
+    jumpToDrawerSection(olSpectating || (room.status === "waiting" && rightTab === "rd-sec-newgame") ? rightTab : "ol-sec-chat");
+  }
 }
 
 function olSyncNames(room) {
@@ -485,12 +676,20 @@ async function olLeaveRoom(silent) {
   if (!olRoomId) return;
   if (!silent && olRoom && olRoom.status === "playing" &&
       !(await olConfirm("방에서 나갈까요?", "대국 중입니다. 나가도 초대 링크로 다시 들어와 이어 둘 수 있습니다.", "나가기"))) return;
+  if (olSpectating) {
+    olLeaveLocal();
+    return;
+  }
   const id = olRoomId;
   const room = olRoom;
   try {
     await olSystem(`${olSideName(olMySide)} 대국자 ${olUser ? olUser.name : ""}님이 나갔습니다.`);
     if (room && room.status === "waiting" && olUser && room.hostUid === olUser.uid) {
       await olBackend.updateRoom(id, olUser.uid, { status: "closed" });
+    } else if (room && room.status === "waiting" && olUser) {
+      // 시작 전 상대가 나가면 자리를 비운다 (방은 다시 상대를 기다림, firestore.rules guestLeave)
+      const seats = Object.assign({}, room.seats, { [olMySide]: null });
+      await olBackend.updateRoom(id, olUser.uid, { seats, members: [room.hostUid], ready: false });
     }
   } catch (e) {
     console.warn("[online] 나가기 알림을 보내지 못했습니다:", e);
@@ -511,15 +710,18 @@ function olLeaveLocal() {
   olRoomId = null;
   olRoom = null;
   olMySide = null;
+  olSpectating = false;
   olMoves = [];
   olChat = [];
   olBoardReady = false;
+  olSetupKey = "";
   olPending = null;
   olSetUrlRoom(null);
   if (typeof olAiLeaveRoom === "function") olAiLeaveRoom();
   if (olSaved) {
     aiMode = olSaved.aiMode;
     timeLimitMinutes = olSaved.timeLimitMinutes;
+    olSyncTimeSelect(timeLimitMinutes);
     newGameState[0] = olSaved.newGameState[0];
     newGameState[1] = olSaved.newGameState[1];
     if (typeof syncCharimButtonStyles === "function") syncCharimButtonStyles();
@@ -731,7 +933,7 @@ function olSendMyMove(fromLocal, x, y) {
 
 function olSendChat(text, kind) {
   const clean = String(text || "").replace(/\s+/g, " ").trim().slice(0, OL_CHAT_MAX);
-  if (!clean || !olRoomId || !olUser) return Promise.resolve(false);
+  if (!clean || !olRoomId || !olUser || olSpectating) return Promise.resolve(false);
   const msg = {
     uid: olUser.uid,
     name: olUser.name.slice(0, OL_NAME_MAX),
@@ -749,6 +951,72 @@ function olSendChat(text, kind) {
 
 function olSystem(text) {
   return olSendChat(text, "system");
+}
+
+// ===== 시작 전 방 설정 (방장: 자기 상차림·진영·제한 시간, 상대: 자기 상차림·준비) =====
+
+function olNeedSetup() {
+  if (!olInSetup() || !olUser) throw Object.assign(new Error("대국을 시작하기 전에만 바꿀 수 있습니다."), { code: "failed-precondition" });
+}
+
+/** 내 상차림 (방장·상대 모두). 바꾸면 준비가 풀린다 */
+async function olSetMyCharim(k) {
+  olNeedSetup();
+  const type = Math.max(0, Math.min(3, k | 0));
+  if (olRoom.charim[olMySide] === type) return;
+  const wasReady = !!olRoom.ready;
+  const charim = Object.assign({}, olRoom.charim, { [olMySide]: type });
+  const host = olAmHost();
+  await olBackend.updateRoom(olRoomId, olUser.uid, { charim, ready: false });
+  if (host && olGuestSeated()) {
+    olSystem(`방장이 상차림을 ${OL_CHARIM_KO[type]}로 바꿨습니다.${wasReady ? " 상대의 준비가 풀렸습니다." : ""}`);
+  } else if (!host && wasReady) {
+    olSystem(`${olSideName(olMySide)} 대국자가 상차림을 ${OL_CHARIM_KO[type]}로 바꿔 준비가 풀렸습니다.`);
+  }
+}
+
+/**
+ * 방장 설정: 진영(자리 맞바꾸기, 상대 자리·상차림이 함께 옮겨 감)과 제한 시간. 바꾸면 상대의 준비가 풀린다.
+ * @param {{side?: "cho"|"han"|"random", timeLimitMin?: number}} opts
+ */
+async function olSetHostSettings(opts) {
+  olNeedSetup();
+  if (!olAmHost()) throw Object.assign(new Error("방장만 바꿀 수 있습니다."), { code: "permission-denied" });
+  const o = olRoom;
+  const pick = opts.side || o.sidePick || olMySide;
+  const side = opts.side ? olPickSide(pick) : olMySide;
+  const time = opts.timeLimitMin === undefined ? o.timeLimitMin : Math.max(0, Math.min(180, opts.timeLimitMin | 0));
+  const swap = side !== olMySide;
+  if (!swap && time === o.timeLimitMin && pick === o.sidePick) return;
+  const seats = swap ? { cho: o.seats.han, han: o.seats.cho } : o.seats;
+  const charim = swap ? { cho: o.charim.han, han: o.charim.cho } : o.charim;
+  const wasReady = !!o.ready;
+  await olBackend.updateRoom(olRoomId, olUser.uid, { seats, charim, timeLimitMin: time, sidePick: pick, ready: false });
+  if (olGuestSeated()) {
+    const parts = [];
+    if (swap) parts.push(`방장 진영 ${olSideName(side)}${pick === "random" ? "(무작위)" : ""}`);
+    if (time !== o.timeLimitMin) parts.push(`제한 시간 ${time ? `${time}분` : "없음"}`);
+    if (parts.length) olSystem(`방장이 설정을 바꿨습니다: ${parts.join(" · ")}.${wasReady ? " 상대의 준비가 풀렸습니다." : ""}`);
+  }
+}
+
+/** 상대: 준비 / 준비 풀기 */
+async function olSetReady(on) {
+  olNeedSetup();
+  if (olAmHost()) return;
+  if (!!olRoom.ready === !!on) return;
+  await olBackend.updateRoom(olRoomId, olUser.uid, { ready: !!on });
+  olSystem(on ? `${olSideName(olMySide)} 대국자가 준비했습니다. 방장이 판을 확인하고 시작합니다.` : `${olSideName(olMySide)} 대국자가 준비를 풀었습니다.`);
+}
+
+/** 방장: 상대가 준비한 뒤 대국 시작 */
+async function olStartGame() {
+  olNeedSetup();
+  if (!olAmHost()) throw Object.assign(new Error("방장만 시작할 수 있습니다."), { code: "permission-denied" });
+  if (!olGuestSeated() || !olRoom.ready) throw Object.assign(new Error("상대가 준비하지 않았습니다"), { code: "not-ready" });
+  const now = Date.now();
+  await olBackend.updateRoom(olRoomId, olUser.uid, { status: "playing", startedAtMs: now, lastMoveAtMs: now });
+  olSystem("방장이 대국을 시작했습니다. 초가 먼저 둡니다.");
 }
 
 // ===== 대국 끝·무르기 =====
@@ -813,7 +1081,7 @@ async function olAnswerUndo(accept) {
 // ===== 시간패 =====
 
 function olTick() {
-  if (!olGameActive() || olTimeoutSent) return;
+  if (!olGameActive() || olTimeoutSent || olSpectating) return;
   const limit = (olRoom.timeLimitMin || 0) * 60;
   if (limit <= 0) return;
   const side = olSideOfPly(log.length);

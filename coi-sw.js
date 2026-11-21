@@ -22,7 +22,9 @@ self.addEventListener("fetch", event => {
   // 개발자 도구가 보내는 특수 요청은 건드리지 않는다
   if (request.cache === "only-if-cached" && request.mode !== "same-origin") return;
   // 온라인 대국 Google 로그인 도우미 창은 격리하지 않는다 (COOP: same-origin이면 Google 팝업과 이야기할 수 없음)
-  if (request.mode === "navigate" && new URL(request.url).pathname.endsWith("/online-auth.html")) return;
+  // 메일 링크로 열리는 승인·로그아웃 페이지도 격리가 필요 없으므로 서비스워커를 거치지 않는다
+  // (메일 앱 내장 브라우저 등에서 서비스워커 경유 요청이 실패하는 일을 피함)
+  if (request.mode === "navigate" && /\/online-(auth|approve|revoke)\.html$/.test(new URL(request.url).pathname)) return;
 
   // credentialless: 외부 no-cors 요청은 쿠키 없이 보낸다
   const outgoing = (COI_COEP === "credentialless" && request.mode === "no-cors")

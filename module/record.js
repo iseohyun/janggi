@@ -850,7 +850,28 @@ function importRecordFromText(text) {
   
   // 기보 텍스트 영역 최신화
   updateRecordUI();
-  
+
+  // 불러온 기보는 두 대국자가 둔 판이므로 대국자 vs 대국자(2인 대국)로 둔다
+  setTwoPlayerModeForRecord();
+
   // AI 플레이 대기 및 실행 트리거
   checkAndRunAI();
+}
+
+/**
+ * 기보를 불러올 때 AI를 끄고 대국자 vs 대국자(2인 대국)로 바꿉니다.
+ * 헤더 이름표의 "AI" 표시와 설정 화면의 대국 모드 선택도 함께 맞춥니다.
+ */
+function setTwoPlayerModeForRecord() {
+  if (aiMode === 0) return;
+  aiMode = 0;
+  try {
+    localStorage.setItem("aiMode", aiMode);
+  } catch (e) {
+    // 저장하지 못해도 이번 화면에서는 2인 대국으로 동작
+  }
+  if (typeof saveCurrentConfigToSlot === "function") saveCurrentConfigToSlot();
+  const sel = document.getElementById("ai-mode-select");
+  if (sel) sel.value = String(aiMode);
+  if (typeof hgUpdateNames === "function") hgUpdateNames();
 }

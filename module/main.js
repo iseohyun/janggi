@@ -709,7 +709,7 @@ function initGame() {
   }
 
   let resizeRafId = null;
-  window.addEventListener("resize", () => {
+  const relayoutBoard = () => {
     if (resizeRafId !== null) {
       cancelAnimationFrame(resizeRafId);
     }
@@ -721,7 +721,14 @@ function initGame() {
       svg.offsetHeight; // Force reflow
       svg.classList.remove("no-transition");
     });
-  });
+  };
+  window.addEventListener("resize", relayoutBoard);
+  // 휴대폰을 돌리면 화면 높이가 resize 뒤에 늦게 바뀌는 브라우저가 있다(iOS Safari 등). 조금씩 늦춰 몇 번 더 맞춘다
+  const relayoutAfterRotate = () => [120, 400, 900].forEach(ms => setTimeout(relayoutBoard, ms));
+  window.addEventListener("orientationchange", relayoutAfterRotate);
+  if (window.screen && screen.orientation && screen.orientation.addEventListener) {
+    screen.orientation.addEventListener("change", relayoutAfterRotate);
+  }
 
   // 키보드 단축키 방향키 및 엔터 리스너 등록
   window.addEventListener("keydown", handleKeyDown, true);

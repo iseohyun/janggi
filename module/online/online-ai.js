@@ -59,6 +59,14 @@ function olAiSetRecommend(on) {
 function olSetAi(feature, on) {
   if (!(feature in olAi)) return;
   on = !!on;
+  // 관전자는 대국 중 AI 도움을 켤 수 없다 (대국자에게 수를 알려 주는 것을 막고, 알릴 채팅도 없음)
+  if (on && olSpectating && olAiGated()) {
+    olToast("관전 중에는 대국이 끝날 때까지 AI 도움을 켤 수 없습니다.", 3000);
+    olAi[feature] = false;
+    if (feature === "rec") olAiSetRecommend(false);
+    if (typeof olEmit === "function") olEmit("ai");
+    return;
+  }
   const changed = olAi[feature] !== on;
   olAi[feature] = on;
   if (feature === "rec") olAiSetRecommend(on);

@@ -8,6 +8,8 @@
  *  - revokeAllSessions : 모든 기기에서 로그아웃 (revokeRefreshTokens + users/{uid}.revokedAt)
  *  - noteLogin         : Google 로그인 직후 기기 기록, 처음 보는 기기면 알림 메일 (이메일 승인형은 claimEmailLogin 안에서)
  *  - revokeByLink      : 알림 메일의 "모든 기기에서 로그아웃" 링크 페이지에서 확인을 누르면 (7일, 한 번만)
+ *  - syncLobby         : (Firestore 트리거) 방 문서가 바뀌면 공개 대국 요약 games/janggi/lobby/{roomId}를 쓰거나 지운다
+ *  - cleanupLobby      : (예약, 10분마다) 마지막 활동 뒤 30분 지난 요약을 지운다. 흐름: functions/lobby.js, lobby-core.js
  * 흐름·규칙: functions/email-login-core.js, 연결: functions/handlers.js, 메일: functions/mailer.js
  *
  * 배포 설정 (docs/online-setup.md 7장):
@@ -24,6 +26,10 @@ const { getFirestore } = require("firebase-admin/firestore");
 const { getAuth } = require("firebase-admin/auth");
 const { makeHandlers, adminUsers } = require("./handlers");
 const { makeMailer } = require("./mailer");
+const { onDocumentWritten } = require("firebase-functions/v2/firestore");
+const { onSchedule } = require("firebase-functions/v2/scheduler");
+const { makeLobby } = require("./lobby");
+const { ROOT: LOBBY_ROOT } = require("./lobby-core");
 
 // 클라이언트(module/online/firebase-backend.js)의 getFunctions 지역과 같게
 setGlobalOptions({ region: "asia-northeast3", maxInstances: 5 });
@@ -96,3 +102,36 @@ exports.revokeAllSessions = onCall(plainOpts, request => getHandlers().revokeAll
 // 아래 둘과 claimEmailLogin은 알림 메일을 보낼 수 있다 (claim은 메일 비밀값이 필요)
 exports.noteLogin = onCall(callOpts, request => getHandlers().noteLogin(request));
 exports.revokeByLink = onCall(plainOpts, request => getHandlers().revokeByLink(request));
+
+// ===== 공개 대국 목록 (games/janggi/lobby/{roomId}) =====
+// 방 문서가 바뀔 때마다 요약을 다시 쓴다(클라이언트는 lobby에 쓸 수 없음, firestore.rules).
+// Firestore 트리거는 데이터베이스와 같은 지역이어야 한다. 데이터베이스가 서울(asia-northeast3)이 아니면
+// 아래 LOBBY_REGION을 데이터베이스 지역으로 바꾼다 (docs/online-setup.md 8장).
+const LOBBY_REGION = "asia-northeast3";
+
+let lobby = null;
+function getLobby() {
+  if (lobby) return lobby;
+  const db = getFirestore();
+  lobby = makeLobby({
+    store: {
+      set: (path, data) => db.doc(path).set(data),
+      del: path => db.doc(path).delete(),
+      staleIds: async (beforeMs, max) => {
+        const snap = await db.collection(`${LOBBY_ROOT}/lobby`).where("activeAtMs", "<", beforeMs).limit(max).get();
+        return snap.docs.map(d => d.id);
+      }
+    },
+    now: () => Date.now(),
+    log: logger
+  });
+  return lobby;
+}
+
+exports.syncLobby = onDocumentWritten({ document: `${LOBBY_ROOT}/rooms/{roomId}`, region: LOBBY_REGION }, event => {
+  const after = event.data && event.data.after && event.data.after.exists ? event.data.after.data() : null;
+  return getLobby().syncLobby(event.params.roomId, after);
+});
+
+exports.cleanupLobby = onSchedule({ schedule: "every 10 minutes", region: LOBBY_REGION, timeZone: "Asia/Seoul" },
+  () => getLobby().cleanupLobby());

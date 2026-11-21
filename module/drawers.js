@@ -7,7 +7,9 @@
  *    다른 아이콘을 누르면 스크롤하지 않고, 지난 영역이 접히고 새 영역이 펼쳐진다 (drawerShowTab).
  *    고정 여부와 서랍 크기는 아이콘(영역)마다 따로 기억한다 (localStorage "drawerPin_<영역 id>",
  *    "drawerWidth_<영역 id>", 모바일 높이 "drawerHeight_<영역 id>").
- *    데스크톱은 화면 왼쪽·오른쪽 끝의 세로 줄, 모바일(849px 이하)은 화면 아래의 가로 줄(왼쪽 반·오른쪽 반).
+ *    데스크톱은 화면 왼쪽·오른쪽 끝의 세로 줄, 모바일 세로 배치(html.rail-bottom, screen-orient.js가 정함)는 두 레일을 합친
+ *    화면 아래 가로 한 줄(왼쪽 몫 = 기보, 오른쪽 몫 = 대국·설정). 모바일 가로 배치는 데스크톱과 같다.
+ *  - 모바일(html.orient-device)에서는 서랍을 한 번에 하나만 연다 (새로 연 쪽만 남긴다).
  *  - 고정(핀): 고정한 서랍은 판을 덮지 않고 판 자리를 줄인다. 고정하지 않은 서랍은 반투명하게 판 위에 덮인다.
  *  - 크기 조절: 서랍 안쪽 가장자리(모바일은 위 가장자리)의 손잡이를 끈다. 크기·고정은 localStorage에 남는다.
  *  - 1200px 이상에서는 처음 열 때 두 서랍을 펼쳐 둔다.
@@ -71,7 +73,15 @@ let drawerReadyToAnimate = false; // 첫 배치는 바로
 let drawerLastOpen = null;
 let drawerAnimTimer = null;
 
+/** 서랍이 아래에서 올라오는 배치(레일이 아래 한 줄)인지. 화면 방향 설정(screen-orient.js)을 따른다 */
 function drawerIsMobile() {
+  if (typeof screenOrientBottom === "function") return screenOrientBottom();
+  return window.matchMedia(DRAWER_MOBILE_QUERY).matches;
+}
+
+/** 휴대폰 화면 (서랍을 하나만 연다) */
+function drawerIsDevice() {
+  if (typeof screenOrientIsDevice === "function") return screenOrientIsDevice();
   return window.matchMedia(DRAWER_MOBILE_QUERY).matches;
 }
 
@@ -352,6 +362,12 @@ function applyDrawerLayout() {
 
 /** 헤더 서랍 버튼의 눌림 상태를 서랍 상태에 맞춥니다. (preview.js·settings.js가 여닫을 때 부름) */
 function syncDrawerButtons(fromLayout) {
+  // 모바일: 두 서랍이 함께 열리면 먼저 열려 있던 쪽을 닫는다 (한 번에 하나)
+  if (drawerIsDevice() && isLeftDrawerOpen() && isRightDrawerOpen()) {
+    const older = drawerLastOpen && drawerLastOpen.left && !drawerLastOpen.right ? "left" : "right";
+    drawerClose(older); // drawerClose가 다시 이 함수를 부른다
+    return;
+  }
   const pairs = [["left-drawer-btn", isLeftDrawerOpen()], ["right-drawer-btn", isRightDrawerOpen()]];
   pairs.forEach(([id, open]) => {
     const btn = document.getElementById(id);
@@ -474,7 +490,7 @@ document.addEventListener("DOMContentLoaded", () => {
   drawerShowTab("right", drawerActiveTab.right, false);
   drawerReady = true;
   // 넓은 화면에서는 처음부터 두 서랍을 펼쳐 둔다
-  if (window.matchMedia(DRAWER_WIDE_QUERY).matches) {
+  if (window.matchMedia(DRAWER_WIDE_QUERY).matches && !drawerIsDevice()) {
     drawerOpen("left");
     drawerOpen("right");
   }

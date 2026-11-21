@@ -3,7 +3,8 @@
  * - 왼쪽 서랍 #preview-panel (기보), 오른쪽 서랍 #setting-box (대국·설정). 서랍 안 세부 모양은
  *   css/variation.css, css/settings.css, css/record.css, css/recommend.css, css/ai-comment.css가 맡는다.
  * - 레일 #left-rail·#right-rail: 늘 보인다. 데스크톱은 화면 왼쪽·오른쪽 끝 세로 줄,
- *   모바일(849px 이하)은 화면 아래 가로 줄(왼쪽 반 = 기보, 오른쪽 반 = 대국·설정). 색은 서랍보다 진하다.
+ *   모바일 세로 배치(html.rail-bottom, module/screen-orient.js)는 두 레일을 합친 화면 아래 가로 한 줄(왼쪽 몫 = 기보,
+ *   오른쪽 몫 = 대국·설정), 모바일 가로 배치는 데스크톱과 같다. 색은 서랍보다 진하다.
  * - 서랍은 레일 옆에서 밀려 나오고(데스크톱) 레일 위로 올라온다(모바일). 닫힘 = [hidden].
  * - 고정(.pinned)한 서랍은 판 자리를 줄여 판을 덮지 않고, 고정하지 않은 서랍은 반투명 유리처럼 판 위에 덮인다.
  * - 레일 아이콘 하나 = 영역 하나. 지금 영역이 아닌 것은 .tab-off로 감춘다.
@@ -29,6 +30,7 @@
   margin-left: var(--board-left);
   width: calc(100vw - var(--board-left) - var(--board-right));
   height: calc(100vh - var(--board-bottom));
+  height: calc(100dvh - var(--board-bottom)); /* 휴대폰 가로 모드에서 판 아래가 주소창에 가려 잘리지 않게 */
 }
 
 /* ===== 레일 ===== */
@@ -320,71 +322,69 @@ html.drawer-resizing .drawer-resize::after {
   font-size: 11px;
 }
 
-/* ===== 모바일: 레일은 아래 가로 줄, 서랍은 그 위로 올라온다 ===== */
-@media (max-width: 849px) {
-  .drawer-rail {
-    top: auto;
-    bottom: 0;
-    width: 50%;
-    height: var(--rail-size);
-    flex-direction: row;
-    justify-content: space-around;
-    padding: 0 4px;
-    border: none;
-    border-top: 1px solid rgba(255, 255, 255, 0.08);
-  }
+/* ===== 모바일 세로 배치(html.rail-bottom, screen-orient.js): 두 레일을 합친 아래 가로 한 줄, 서랍은 그 위로 올라온다 ===== */
+html.rail-bottom .drawer-rail {
+  top: auto;
+  bottom: 0;
+  width: 50%;
+  height: var(--rail-size);
+  flex-direction: row;
+  justify-content: space-around;
+  padding: 0 4px;
+  border: none;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
 
-  .right-rail {
-    border-left: 1px solid rgba(255, 255, 255, 0.12);
-  }
+html.rail-bottom .right-rail {
+  border-left: 1px solid rgba(255, 255, 255, 0.12);
+}
 
-  .side-drawer {
-    top: auto;
-    left: 0;
-    right: 0;
-    bottom: var(--rail-size);
-    width: auto;
-    border: none;
-    border-top: 1px solid var(--color-border-light);
-    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-  }
+html.rail-bottom .side-drawer {
+  top: auto;
+  left: 0;
+  right: 0;
+  bottom: var(--rail-size);
+  width: auto;
+  border: none;
+  border-top: 1px solid var(--color-border-light);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+}
 
-  .left-drawer {
-    height: var(--left-drawer-h);
-  }
+html.rail-bottom .left-drawer {
+  height: var(--left-drawer-h);
+}
 
-  .right-drawer {
-    height: var(--right-drawer-h);
-  }
+html.rail-bottom .right-drawer {
+  height: var(--right-drawer-h);
+}
 
-  .left-drawer[hidden],
-  .right-drawer[hidden] {
-    transform: translateY(calc(100% + var(--rail-size)));
-  }
+html.rail-bottom .left-drawer[hidden],
+html.rail-bottom .right-drawer[hidden] {
+  transform: translateY(calc(100% + var(--rail-size)));
+}
 
-  .side-drawer > .drawer-main {
-    padding-top: 10px;
-  }
+html.rail-bottom .side-drawer > .drawer-main {
+  padding-top: 10px;
+}
 
-  .drawer-resize,
-  .left-drawer .drawer-resize,
-  .right-drawer .drawer-resize {
-    top: 0;
-    bottom: auto;
-    left: 0;
-    right: 0;
-    width: auto;
-    height: 16px;
-    cursor: ns-resize;
-  }
+html.rail-bottom .drawer-resize,
+html.rail-bottom .left-drawer .drawer-resize,
+html.rail-bottom .right-drawer .drawer-resize {
+  top: 0;
+  bottom: auto;
+  left: 0;
+  right: 0;
+  width: auto;
+  height: 16px;
+  cursor: ns-resize;
+}
 
-  .drawer-resize::after {
-    top: 6px;
-    left: 50%;
-    width: 44px;
-    height: 4px;
-    margin: 0 0 0 -22px;
-  }
+html.rail-bottom .drawer-resize::after {
+  top: 6px;
+  left: 50%;
+  width: 44px;
+  height: 4px;
+  margin: 0 0 0 -22px;
 }
 
 /* 왼쪽 서랍: 수순 이동 버튼·대회명·상태·그림 저장은 "현재 기보" 영역에서만 (drawers.js가 data-tab을 단다) */
@@ -593,4 +593,38 @@ html.drawer-resizing .drawer-resize::after {
 
 #rd-sec-ai .ef-actions [hidden] {
   display: none;
+}
+
+/* 두 레일을 한 줄로 합친다: 아이콘 수에 따라 왼쪽 몫(--rail-left-share, screen-orient.js)을 나눠 간격이 고르게 */
+html.rail-bottom .left-rail {
+  width: var(--rail-left-share, 50%);
+}
+
+html.rail-bottom .right-rail {
+  width: calc(100% - var(--rail-left-share, 50%));
+  border-left-color: rgba(255, 255, 255, 0.06);
+}
+
+html.rail-bottom .rail-btn {
+  flex: 0 1 38px;
+  min-width: 0;
+}
+
+/* 화면 방향 버튼(왼쪽 레일 끝)은 모바일에서만 */
+.rail-orient-btn {
+  display: none;
+}
+
+html.orient-device .rail-orient-btn {
+  display: inline-flex;
+}
+
+/* 모바일: 대국 헤더(상황판)와 판을 화면 위쪽에 붙인다 */
+html.orient-device #janggi-app {
+  justify-content: flex-start;
+  padding-top: 0;
+}
+
+html.orient-device #game-header {
+  margin-top: 0;
 }

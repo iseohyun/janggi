@@ -342,37 +342,35 @@ body.previewing #turn {
   stroke-width: 1.75;
 }
 
-/* ===== 모바일 (서랍 위치·크기는 css/drawer.css) ===== */
-@media (max-width: 849px) {
-  .preview-panel-header {
-    padding: 6px 12px 4px;
-    gap: 2px;
-  }
+/* ===== 모바일 세로 배치 html.rail-bottom (서랍 위치·크기는 css/drawer.css) ===== */
+html.rail-bottom .preview-panel-header {
+  padding: 6px 12px 4px;
+  gap: 2px;
+}
 
-  .preview-position-label {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
+html.rail-bottom .preview-position-label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 
-  .preview-controls {
-    padding: 6px 12px;
-    flex-wrap: nowrap;
-  }
+html.rail-bottom .preview-controls {
+  padding: 6px 12px;
+  flex-wrap: nowrap;
+}
 
-  .preview-nav {
-    width: auto;
-  }
+html.rail-bottom .preview-nav {
+  width: auto;
+}
 
-  .preview-btn {
-    min-height: 32px;
-    padding: 4px 6px;
-    font-size: 12px;
-  }
+html.rail-bottom .preview-btn {
+  min-height: 32px;
+  padding: 4px 6px;
+  font-size: 12px;
+}
 
-  .variation-tree {
-    max-height: none;
-  }
+html.rail-bottom .variation-tree {
+  max-height: none;
 }
 
 /* ===== 변화도 머리: 눈 아이콘으로 수순 글자 보이기·숨기기 (variation-tree.js) ===== */

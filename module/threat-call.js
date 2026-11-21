@@ -7,6 +7,8 @@
  * - 범위: 위협받는 기물 종류 (차포마 / 대기물 / +사 / 모든 기물). 궁은 범위와 따로 "장군" 말풍선으로만 알린다
  *   (판 위에 따로 장군 표시가 없어서 겹칠 것이 없다).
  * - 몇 수 앞: 1수(바로 잡힘), 2수(장군 → 어떻게 받아도 잡힘), 3수(장군 → 장군 → 잡힘). 말풍선 색으로 구분.
+ * - 2·3수 말풍선을 누르면 그 수순(장군 → 가장 잘 받는 응수 → 잡기)을 두어보기 가지("위협" 색)로 만들어 재생한다.
+ *   위협한 쪽이 둘 차례가 아니면 앞에 상대의 한수쉼을 넣는다.
  * - 가짜 위협 거르기: 잡은 뒤 되잡히는 손익(SEE, 기물 교환 계산)이 0 이하이면 위협으로 보지 않는다.
  *   2·3수는 장군 친 기물을 내주는 손해까지 빼고도 이득일 때만 센다.
  *
@@ -306,7 +308,7 @@ function tcForcedThreats(side, maxDepth, skip, inScope, deadline) {
         tcUnmake(ur);
         if (!cands.length) break;
       }
-      for (const t of cands) found.set(t, { depth: 2, checkers: [c.i] });
+      for (const t of cands) found.set(t, { depth: 2, checkers: [c.i], first: { i: c.i, x: c.x, y: c.y } });
     }
     tcUnmake(uc);
   }
@@ -348,7 +350,7 @@ function tcForcedThreats(side, maxDepth, skip, inScope, deadline) {
         cands = cands.filter(t => reach.has(t));
         if (!cands.length) break;
       }
-      for (const t of cands) found.set(t, { depth: 3, checkers: [c1.i, secondChecker === null ? c1.i : secondChecker] });
+      for (const t of cands) found.set(t, { depth: 3, checkers: [c1.i, secondChecker === null ? c1.i : secondChecker], first: { i: c1.i, x: c1.x, y: c1.y } });
     }
     tcUnmake(u1);
   }
@@ -397,11 +399,14 @@ function threatCallAnalyze(before, after, m, cfg) {
   const inScope = t => t % 16 !== 0 && t % 16 <= maxIdx;
   const deadline = performance.now() + TC_BUDGET_MS;
   const calls = new Map(); // t → call (얕은 수가 우선)
-  const add = (t, info, kind) => {
+  const add = (t, info, kind, side) => {
     const prev = calls.get(t);
     const depth = info.check ? 1 : info.depth;
     if (prev && prev.depth <= depth) return;
-    calls.set(t, { t, depth, text: tcText(t, Object.assign({ depth }, info)), kind });
+    const call = { t, depth, text: tcText(t, Object.assign({ depth }, info)), kind };
+    // 2·3수 위협은 말풍선을 누르면 수순을 두어보기로 보여 준다 (tcShowLine)
+    if (depth >= 2 && info.first && side !== undefined) call.line = { side, first: info.first, toMove: O, after };
+    calls.set(t, call);
   };
 
   return tcWithSim(() => {
@@ -433,8 +438,8 @@ function threatCallAnalyze(before, after, m, cfg) {
     }
     for (const [t, info] of deepS) {
       const byMover = info.checkers.includes(m);
-      if (byMover && c.kinds.attack) add(t, info, "attack");
-      else if (c.kinds.discovered && !beforeDeepS.has(t)) add(t, info, "discovered");
+      if (byMover && c.kinds.attack) add(t, info, "attack", S);
+      else if (c.kinds.discovered && !beforeDeepS.has(t)) add(t, info, "discovered", S);
     }
     // ② 둔 기물을 노리는 상대 기물 / ④ 새로 위협받게 된 내 기물
     for (const [t] of gainsO) {
@@ -446,13 +451,122 @@ function threatCallAnalyze(before, after, m, cfg) {
     }
     for (const [t, info] of deepO) {
       if (t === m) {
-        if (c.kinds.attacked && inScope(t)) add(t, info, "attacked");
+        if (c.kinds.attacked && inScope(t)) add(t, info, "attacked", O);
       } else if (inScope(t) && c.kinds.exposed && !beforeDeepO.has(t)) {
-        add(t, info, "exposed");
+        add(t, info, "exposed", O);
       }
     }
     return [...calls.values()].sort((a, b) => a.depth - b.depth || tcVal(b.t) - tcVal(a.t));
   });
+}
+
+// ===== 말풍선 수순 (2·3수 위협) =====
+
+/** 응수 뒤 side가 목표 t를 잡는 가장 이득 큰 수 {i, x, y, gain}. 없으면 null */
+function tcBestCapture(side, t) {
+  let best = null;
+  for (const p of tcThreatPairs(side)) {
+    if (p.t !== t || p.check) continue;
+    if (!best || p.gain > best.gain) best = { i: p.a, x: tcSim[t].x, y: tcSim[t].y, gain: p.gain };
+  }
+  return best;
+}
+
+/** 지금 판에서 상대 응수 중 목표 t를 가장 잘 지키는 수와 그 뒤 잡는 수 {reply, cap}. lostBefore는 앞서 내준 손해 */
+function tcBestDefense(side, t, lostBefore) {
+  let pick = null;
+  for (const r of tcLegalMoves(1 - side)) {
+    const u = tcMake(r.i, r.x, r.y);
+    const lost = lostBefore + (u.cap < NO_PIECE ? tcVal(u.cap) : 0);
+    const cap = tcAlive(t) ? tcBestCapture(side, t) : null;
+    tcUnmake(u);
+    if (!cap || cap.gain - lost <= 0) continue; // 이 응수로는 막힌다 (판정과 어긋나면 건너뜀)
+    const net = cap.gain - lost;
+    if (!pick || net < pick.net) pick = { reply: r, cap, net, lost };
+  }
+  return pick;
+}
+
+/**
+ * 말풍선 하나의 수순을 만듭니다: [ (한수쉼) , 장군, 대표 응수, (장군, 대표 응수), 잡는 수 ].
+ * 대표 응수는 목표를 가장 잘 지키는 수(잡는 쪽 이득이 가장 작은 수)로 고른다. 3수 위협의 첫 응수는 받을 수 있는 첫 수.
+ * @returns {Array<{i,x,y}>|null}
+ */
+function tcBuildLine(call) {
+  const L = call.line;
+  if (!L) return null;
+  const side = L.side;
+  const opp = 1 - side;
+  return tcWithSim(() => {
+    tcLoad(L.after);
+    const moves = [];
+    // 위협한 쪽이 지금 둘 차례가 아니면(둔 쪽이 한 번 더 둔다면의 위협) 상대가 한수쉼한 것으로 보여 준다
+    if (L.toMove !== side) {
+      const k = tcSim[opp * 16];
+      if (k.x === 0) return null;
+      moves.push({ i: opp * 16, x: k.x, y: k.y });
+    }
+    const u1 = tcMake(L.first.i, L.first.x, L.first.y);
+    moves.push(L.first);
+    let line = null;
+    if (call.depth === 2) {
+      const d = tcBestDefense(side, call.t, 0);
+      if (d) line = [d.reply, d.cap];
+    } else {
+      for (const r1 of tcLegalMoves(opp)) {
+        const ur1 = tcMake(r1.i, r1.x, r1.y);
+        const lost1 = ur1.cap < NO_PIECE ? tcVal(ur1.cap) : 0;
+        for (const c2 of tcCheckingMoves(side)) {
+          const u2 = tcMake(c2.i, c2.x, c2.y);
+          const replies = tcLegalMoves(opp);
+          let ok = replies.length > 0;
+          for (const r2 of replies) {
+            const ur2 = tcMake(r2.i, r2.x, r2.y);
+            const lost = lost1 + (ur2.cap < NO_PIECE ? tcVal(ur2.cap) : 0);
+            const cap = tcAlive(call.t) ? tcBestCapture(side, call.t) : null;
+            tcUnmake(ur2);
+            if (!cap || cap.gain - lost <= 0) { ok = false; break; }
+          }
+          const d = ok ? tcBestDefense(side, call.t, lost1) : null;
+          tcUnmake(u2);
+          if (d) { line = [r1, c2, d.reply, d.cap]; break; }
+        }
+        tcUnmake(ur1);
+        if (line) break;
+      }
+    }
+    tcUnmake(u1);
+    if (!line) return null;
+    return moves.concat(line).map(m => ({ i: m.i, x: m.x, y: m.y }));
+  });
+}
+
+/** 말풍선을 누르면 그 수순을 두어보기 가지로 만들어 한 수씩 보여 줍니다. 같은 수순 가지가 있으면 그것을 다시 재생합니다. */
+function tcShowLine(call) {
+  const now = tcSnapshot();
+  const after = call.line && call.line.after;
+  if (!after || now.some((p, k) => p.x !== after[k].x || p.y !== after[k].y)) {
+    if (typeof showToast === "function") showToast("판이 바뀌어 이 수순을 보여 줄 수 없습니다.");
+    return;
+  }
+  let moves = null;
+  try {
+    moves = tcBuildLine(call);
+  } catch (e) {
+    console.error("[threat-call] 수순 만들기 실패:", e);
+  }
+  if (!moves || !moves.length) {
+    if (typeof showToast === "function") showToast("수순을 찾지 못했습니다.");
+    return;
+  }
+  if (typeof enterPreviewMode !== "function" || typeof playVariation !== "function") return;
+  if (!isPreviewActive() && !enterPreviewMode("threat")) return;
+  if (typeof pvSyncExploreButton === "function") pvSyncExploreButton();
+  const c = previewCursor;
+  const same = v => v.moves.length === moves.length && v.moves.every((m, k) => sameMove(m, moves[k]));
+  const twin = getChildVariations(c.varId, c.step).find(same);
+  const v = twin || createVariation(c.step, moves, "threat", call.text, c.varId);
+  playVariation(v.id);
 }
 
 // ===== 그리기 =====
@@ -493,6 +607,18 @@ function tcDraw() {
     const g = document.createElementNS(ns, "g");
     g.setAttribute("class", `tc-bubble tc-depth-${call.depth} tc-kind-${call.kind} tc-side-${side}`);
     g.setAttribute("data-target", String(call.t));
+    if (call.line) {
+      // 2·3수 위협: 눌러서 수순 보기 (층은 pointer-events="none"이라 이 말풍선만 켠다)
+      g.setAttribute("pointer-events", "auto");
+      g.classList.add("tc-clickable");
+      const tip = document.createElementNS(ns, "title");
+      tip.textContent = `${call.text} — 눌러서 수순 보기`;
+      g.appendChild(tip);
+      g.addEventListener("click", e => {
+        e.stopPropagation();
+        tcShowLine(call);
+      });
+    }
     const tailY = below ? top : top + h;
     const tipY = below ? top - fs * 0.35 : top + h + fs * 0.35;
     const tail = document.createElementNS(ns, "path");
@@ -547,15 +673,16 @@ function tcSnapshot() {
  * @param {Array} before - 두기 전 좌표
  * @param {number} i @param {number} x @param {number} y - 둔 수
  * @param {boolean} byAI - AI가 둔 수인지
+ * @param {boolean} [replay] - 기보 재생(다음 수·자동 재생)으로 둔 수인지. 재생은 "내 수"가 따로 없으므로 양쪽 수를 모두 알린다.
  */
-function tcOnMove(before, i, x, y, byAI) {
+function tcOnMove(before, i, x, y, byAI, replay) {
   const after = tcSnapshot();
   if (after[i].x !== x || after[i].y !== y) return; // 실제로 두어지지 않음
   tcClear();
   if (before[i].x === x && before[i].y === y) return; // 한수쉼 (pass-turn.js): 지난 알림만 지운다
   const mine = !byAI && tcSide(i) === tcMySide();
   const cfg = threatCallConfig;
-  if (mine ? !cfg.movers.mine : !cfg.movers.opp) return;
+  if (!replay && (mine ? !cfg.movers.mine : !cfg.movers.opp)) return;
   if (!cfg.bubble && !cfg.voice) return;
   const token = tcToken;
   const delay = Math.max(0, (typeof animDuration === "number" ? animDuration : 0) * 1000) + 40;
@@ -688,8 +815,26 @@ document.addEventListener("DOMContentLoaded", () => {
     tcOnMove(before, i, x, y, source === "ai");
     return r;
   });
+  // 기보 재생(다음 수 버튼·Alt+→·자동 재생)으로 한 수 나아간 수도 알린다
+  tcWrap("next", orig => function () {
+    if (tcInHook) return orig.apply(this, arguments);
+    const turnEl = document.getElementById("turn");
+    const cur = turnEl ? parseInt(turnEl.value, 10) : NaN;
+    const mv = Number.isInteger(cur) && typeof log !== "undefined" ? log[cur] : null;
+    tcClear();
+    const before = tcSnapshot();
+    tcInHook++;
+    let r;
+    try {
+      r = orig.apply(this, arguments);
+    } finally {
+      tcInHook--;
+    }
+    if (mv && turnEl && parseInt(turnEl.value, 10) === cur + 1) tcOnMove(before, mv.i, mv.x, mv.y, false, true);
+    return r;
+  });
   // 수순 이동·새 대국·뒤집기 → 지난 알림 지우기
-  ["next", "prev", "performSinglePrev", "goToStart", "goToEnd", "startNewGame", "importRecordFromText",
+  ["prev", "performSinglePrev", "goToStart", "goToEnd", "startNewGame", "importRecordFromText",
     "previewRender", "exitPreviewMode", "flipBoardHorizontal", "flipBoardVertical", "toggleNation"].forEach(name => {
     if (typeof window[name] !== "function") return;
     tcWrap(name, orig => function () {

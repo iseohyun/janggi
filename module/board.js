@@ -5,6 +5,8 @@
 /**
  * 뷰포트 및 컨테이너 크기에 맞춰 장기판 크기(unitSize, boardWidth, boardHeight)를 계산하고 보드를 초기화합니다.
  */
+const BOARD_MIN_UNIT = 8; // 한 칸 최소 크기(px). 예전 20px은 휴대폰 가로 모드에서 판 아래를 잘랐다
+
 function initBoard() {
   const controlBox = document.getElementById("game-header");
   const container = controlBox.parentElement || document.body;
@@ -14,7 +16,9 @@ function initBoard() {
   const header = document.querySelector("header");
   const headerHeight = header ? header.offsetHeight : 0;
 
-  const headerGap = headerHeight > 0 ? headerHeight + 5 : 5;
+  // 모바일(html.orient-device, screen-orient.js)은 대국 헤더와 판을 화면 위쪽에 바로 붙인다
+  const topGap = document.documentElement.classList.contains("orient-device") ? 0 : 5;
+  const headerGap = headerHeight > 0 ? headerHeight + topGap : topGap;
   controlBox.style.marginTop = `${headerGap}px`;
 
   const containerRect = container.getBoundingClientRect();
@@ -25,6 +29,9 @@ function initBoard() {
   if (!containerHeight || containerHeight > viewportRemainingHeight) {
     containerHeight = viewportRemainingHeight;
   }
+  // 판 자리 아래쪽이 화면 밖(주소창·도구 막대 아래)으로 나가 있으면 보이는 곳까지만 쓴다
+  const visibleBottom = Math.min(containerRect.bottom > 0 ? containerRect.bottom : window.innerHeight, window.innerHeight);
+  containerHeight = Math.min(containerHeight, Math.max(0, visibleBottom - topOffset));
 
   if (showCoordinates) {
     boardPaddingLeft = 45;
@@ -45,7 +52,8 @@ function initBoard() {
 
   const unitByWidth = gridAvailableWidth / 9;
   const unitByHeight = gridAvailableHeight / 10;
-  unitSize = Math.max(20, Math.min(unitByWidth, unitByHeight));
+  // 어떤 화면에서도 판이 잘리지 않게: 남은 자리에 맞추고, 아주 작은 화면에서만 최소 크기를 둔다
+  unitSize = Math.max(BOARD_MIN_UNIT, Math.min(unitByWidth, unitByHeight));
 
   boardWidth = unitSize * 9 + boardPaddingLeft + boardPaddingRight;
   boardHeight = unitSize * 10 + boardPaddingTop + boardPaddingBottom;
